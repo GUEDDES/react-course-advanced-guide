@@ -1,63 +1,100 @@
-# useTransition - Concurrent Rendering (React 18+)
+# Module 11: useTransition - Concurrent Rendering
 
 ## 🎯 Learning Objectives
 
 - ✅ Understand concurrent rendering
+- ✅ Use useTransition hook
 - ✅ Mark updates as non-urgent
-- ✅ Keep UI responsive
-- ✅ Show loading states
-- ✅ Optimize user experience
+- ✅ Improve perceived performance
+- ✅ Handle pending states
 
 ---
 
 ## 📖 What is useTransition?
 
-useTransition lets you mark state updates as **transitions** (non-urgent), keeping the UI responsive during expensive updates.
+Marks state updates as transitions (non-urgent), allowing React to keep the UI responsive during expensive updates.
 
 ```jsx
 const [isPending, startTransition] = useTransition();
 ```
 
+**Returns:**
+- `isPending`: Boolean indicating if transition is in progress
+- `startTransition`: Function to wrap non-urgent updates
+
 ---
 
-## 💻 Basic Examples
+## 💻 Basic Example
 
-### Example 1: Search Filter
+### Without useTransition (Blocking)
+
+```jsx
+import { useState } from 'react';
+
+function SearchableList({ items }) {
+  const [query, setQuery] = useState('');
+
+  // ❌ Filters 10,000+ items on every keystroke - BLOCKS UI
+  const filteredItems = items.filter(item =>
+    item.toLowerCase().includes(query.toLowerCase())
+  );
+
+  return (
+    <div>
+      {/* Input feels sluggish during typing */}
+      <input
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Search..."
+      />
+      
+      <ul>
+        {filteredItems.map(item => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+### With useTransition (Non-blocking)
 
 ```jsx
 import { useState, useTransition } from 'react';
 
-function SearchList({ items }) {
+function SearchableList({ items }) {
   const [query, setQuery] = useState('');
+  const [deferredQuery, setDeferredQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e) => {
     const value = e.target.value;
     
-    // Urgent: Update input immediately
+    // ✅ Update input immediately (urgent)
     setQuery(value);
     
-    // Non-urgent: Filter list can wait
+    // ✅ Defer expensive filtering (non-urgent)
     startTransition(() => {
-      setFilteredQuery(value);
+      setDeferredQuery(value);
     });
   };
 
-  const [filteredQuery, setFilteredQuery] = useState('');
-  
   const filteredItems = items.filter(item =>
-    item.toLowerCase().includes(filteredQuery.toLowerCase())
+    item.toLowerCase().includes(deferredQuery.toLowerCase())
   );
 
   return (
     <div>
+      {/* Input stays responsive! */}
       <input
         value={query}
         onChange={handleChange}
         placeholder="Search..."
       />
       
-      {isPending && <div>Loading...</div>}
+      {/* Show loading state during transition */}
+      {isPending && <div>Updating results...</div>}
       
       <ul style={{ opacity: isPending ? 0.5 : 1 }}>
         {filteredItems.map(item => (
@@ -69,7 +106,11 @@ function SearchList({ items }) {
 }
 ```
 
-### Example 2: Tab Switching
+---
+
+## 🎯 Real-World Examples
+
+### Example 1: Tab Switching
 
 ```jsx
 import { useState, useTransition } from 'react';
@@ -78,7 +119,7 @@ function Tabs() {
   const [activeTab, setActiveTab] = useState('home');
   const [isPending, startTransition] = useTransition();
 
-  const switchTab = (tab) => {
+  const handleTabClick = (tab) => {
     startTransition(() => {
       setActiveTab(tab);
     });
@@ -86,257 +127,231 @@ function Tabs() {
 
   return (
     <div>
-      <div className="tab-buttons">
-        <button onClick={() => switchTab('home')}>Home</button>
-        <button onClick={() => switchTab('profile')}>Profile</button>
-        <button onClick={() => switchTab('posts')}>Posts</button>
+      <div className="tabs">
+        <button onClick={() => handleTabClick('home')}>
+          Home
+        </button>
+        <button onClick={() => handleTabClick('profile')}>
+          Profile {isPending && '...'}
+        </button>
+        <button onClick={() => handleTabClick('settings')}>
+          Settings
+        </button>
       </div>
 
-      <div className="tab-content" style={{ opacity: isPending ? 0.7 : 1 }}>
-        {isPending && <div className="loading-spinner">Loading...</div>}
-        
-        {activeTab === 'home' && <HomePage />}
-        {activeTab === 'profile' && <ProfilePage />}
-        {activeTab === 'posts' && <PostsPage />} {/* Expensive */}
+      <div style={{ opacity: isPending ? 0.7 : 1 }}>
+        {activeTab === 'home' && <HomeContent />}
+        {activeTab === 'profile' && <ProfileContent />} {/* Heavy component */}
+        {activeTab === 'settings' && <SettingsContent />}
       </div>
     </div>
   );
 }
 
-function PostsPage() {
-  // Simulate expensive component
-  const posts = Array.from({ length: 10000 }, (_, i) => ({
-    id: i,
-    title: `Post ${i}`
-  }));
-
+function ProfileContent() {
+  // Expensive component
+  const posts = Array.from({ length: 5000 }, (_, i) => `Post ${i}`);
   return (
     <div>
-      {posts.map(post => (
-        <div key={post.id}>{post.title}</div>
-      ))}
+      {posts.map(post => <div key={post}>{post}</div>)}
     </div>
   );
 }
 ```
 
----
-
-## 🎯 Real-World Examples
-
-### Example 3: Data Table with Filtering
+### Example 2: Auto-complete
 
 ```jsx
-import { useState, useTransition, useMemo } from 'react';
+import { useState, useTransition } from 'react';
 
-function DataTable({ data }) {
-  const [sortBy, setSortBy] = useState('name');
-  const [filterText, setFilterText] = useState('');
+function Autocomplete({ suggestions }) {
+  const [input, setInput] = useState('');
+  const [deferredInput, setDeferredInput] = useState('');
   const [isPending, startTransition] = useTransition();
 
-  const handleSort = (column) => {
-    startTransition(() => {
-      setSortBy(column);
-    });
-  };
-
-  const handleFilter = (e) => {
+  const handleInputChange = (e) => {
     const value = e.target.value;
-    setFilterText(value); // Immediate update
+    setInput(value);
     
     startTransition(() => {
-      // Heavy filtering happens as transition
-      // UI stays responsive
+      setDeferredInput(value);
     });
   };
 
-  const processedData = useMemo(() => {
-    let result = data;
-    
-    // Filter
-    if (filterText) {
-      result = result.filter(item =>
-        item.name.toLowerCase().includes(filterText.toLowerCase())
-      );
-    }
-    
-    // Sort
-    result = [...result].sort((a, b) => 
-      a[sortBy] > b[sortBy] ? 1 : -1
-    );
-    
-    return result;
-  }, [data, sortBy, filterText]);
+  const matches = suggestions.filter(s =>
+    s.toLowerCase().includes(deferredInput.toLowerCase())
+  ).slice(0, 10);
 
   return (
     <div>
       <input
-        value={filterText}
-        onChange={handleFilter}
-        placeholder="Filter..."
+        value={input}
+        onChange={handleInputChange}
+        placeholder="Type to search..."
       />
       
-      {isPending && <div className="loading-bar" />}
-      
-      <table style={{ opacity: isPending ? 0.6 : 1 }}>
-        <thead>
-          <tr>
-            <th onClick={() => handleSort('name')}>Name</th>
-            <th onClick={() => handleSort('age')}>Age</th>
-            <th onClick={() => handleSort('email')}>Email</th>
-          </tr>
-        </thead>
-        <tbody>
-          {processedData.map(item => (
-            <tr key={item.id}>
-              <td>{item.name}</td>
-              <td>{item.age}</td>
-              <td>{item.email}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {deferredInput && (
+        <div className="suggestions">
+          {isPending ? (
+            <div>Loading...</div>
+          ) : (
+            matches.map(match => (
+              <div key={match} onClick={() => setInput(match)}>
+                {match}
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
 ```
 
-### Example 4: Route Transitions
+### Example 3: Data Filtering
 
 ```jsx
 import { useState, useTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
 
-function Navigation() {
-  const navigate = useNavigate();
+function ProductFilter({ products }) {
+  const [category, setCategory] = useState('all');
   const [isPending, startTransition] = useTransition();
 
-  const handleNavigate = (path) => {
+  const handleCategoryChange = (newCategory) => {
     startTransition(() => {
-      navigate(path);
+      setCategory(newCategory);
     });
   };
 
+  const filtered = category === 'all'
+    ? products
+    : products.filter(p => p.category === category);
+
   return (
-    <nav>
-      {isPending && <div className="page-loading">Loading page...</div>}
-      
-      <button onClick={() => handleNavigate('/')}>Home</button>
-      <button onClick={() => handleNavigate('/about')}>About</button>
-      <button onClick={() => handleNavigate('/products')}>Products</button>
-    </nav>
+    <div>
+      <div className="filters">
+        {['all', 'electronics', 'clothing', 'books'].map(cat => (
+          <button
+            key={cat}
+            onClick={() => handleCategoryChange(cat)}
+            disabled={isPending}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {isPending && <div className="loading-bar" />}
+
+      <div className="products" style={{ opacity: isPending ? 0.6 : 1 }}>
+        {filtered.map(product => (
+          <ProductCard key={product.id} product={product} />
+        ))}
+      </div>
+    </div>
   );
 }
 ```
 
 ---
 
-## 📊 useTransition vs setTimeout
+## 🔄 Comparison with useDeferredValue
 
 ```jsx
-// ❌ Old way - setTimeout
-function SearchOld() {
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  // Uses debouncedQuery for filtering
-}
-
-// ✅ New way - useTransition
-function SearchNew() {
-  const [query, setQuery] = useState('');
+// useTransition - wrap the STATE UPDATE
+function Component() {
+  const [input, setInput] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const handleChange = (e) => {
-    setQuery(e.target.value);
     startTransition(() => {
-      // Update happens when browser is ready
+      setInput(e.target.value);
     });
+  };
+}
+
+// useDeferredValue - defer the VALUE
+function Component() {
+  const [input, setInput] = useState('');
+  const deferredInput = useDeferredValue(input);
+
+  const handleChange = (e) => {
+    setInput(e.target.value);
   };
 }
 ```
 
-**Benefits of useTransition:**
-- No arbitrary delay
-- React decides when to render
-- Can be interrupted
-- Better UX
+**Use useTransition when:**
+- You control the state update
+- You want to show pending UI
+- You need to know when transition completes
+
+**Use useDeferredValue when:**
+- You receive value from props
+- You just want to defer rendering
 
 ---
 
-## ⚠️ Important Notes
+## ⚠️ Best Practices
 
-### What Gets Wrapped?
+### ✅ Do's
 
 ```jsx
-// ✅ Wrap state updates
+// ✅ Use for non-urgent updates
 startTransition(() => {
-  setState(newValue);
+  setFilteredData(expensiveFilter(data));
 });
 
-// ❌ Don't wrap async operations
-startTransition(async () => {
-  await fetchData(); // Won't work as expected
-});
+// ✅ Show loading indicator
+{isPending && <Spinner />}
 
-// ✅ Update state after async
-const data = await fetchData();
+// ✅ Keep urgent updates outside
+setInputValue(e.target.value); // Immediate
 startTransition(() => {
-  setData(data);
+  setSearchResults(results); // Deferred
 });
 ```
 
-### Urgent vs Non-Urgent
+### ❌ Don'ts
 
-**Urgent (Don't wrap):**
-- Text input changes
-- Button clicks
-- Focus changes
+```jsx
+// ❌ Don't use for controlled inputs
+startTransition(() => {
+  setInputValue(e.target.value); // Input will lag!
+});
 
-**Non-Urgent (Wrap in transition):**
-- Filtering large lists
-- Sorting data
-- Route changes
-- Complex calculations
+// ❌ Don't use for urgent updates
+startTransition(() => {
+  setErrorMessage('Error!'); // Should be immediate
+});
+```
 
 ---
 
 ## 🏋️ Exercises
 
-### Exercise 1: Product Filter
-Build product filter with transitions.
+### Exercise 1: Sortable Table
+
+Create table with sortable columns.
 
 **Requirements:**
-- Filter by category, price, rating
-- 1000+ products
-- Smooth UI during filtering
+- 1000+ rows
+- Multiple sort options
+- Use useTransition
+- Show loading state
+
+### Exercise 2: Live Search
+
+Implement live search with results.
+
+**Requirements:**
+- Search 10,000+ items
+- Highlight matches
+- Responsive input
 - Loading indicator
-
-### Exercise 2: Code Editor
-Create code editor with syntax highlighting.
-
-**Requirements:**
-- Real-time highlighting
-- Responsive typing
-- Use transitions for highlighting
-
-### Exercise 3: Dashboard
-Build dashboard with widget switching.
-
-**Requirements:**
-- Multiple heavy widgets
-- Smooth transitions
-- Loading states
 
 ---
 
-## ➡️ Next Module
+## ⏭️ Next Module
 
-[useDeferredValue - Deferred Updates →](../12-useDeferredValue/README.md)
+[useDeferredValue - Deferred Rendering →](../12-useDeferredValue/README.md)
