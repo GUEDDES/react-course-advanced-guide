@@ -1,76 +1,108 @@
-name: CI/CD Pipeline
+name: CI
 
 on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 jobs:
-  lint-and-test:
+  test-task-manager:
+    name: Test Task Manager
     runs-on: ubuntu-latest
     
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x]
-        example: [movie-app, state-management-demo]
-    
     steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v4
-      with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
-    
-    - name: Install dependencies
-      run: |
-        cd examples/${{ matrix.example }}
-        npm ci
-    
-    - name: Run linter
-      run: |
-        cd examples/${{ matrix.example }}
-        npm run lint
-    
-    - name: Run tests
-      run: |
-        cd examples/${{ matrix.example }}
-        npm test -- --coverage
-    
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        files: examples/${{ matrix.example }}/coverage/coverage-final.json
-        flags: ${{ matrix.example }}
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: examples/advanced-task-manager/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: examples/advanced-task-manager
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: examples/advanced-task-manager
+        run: npm run lint
+      
+      - name: Run tests
+        working-directory: examples/advanced-task-manager
+        run: npm test
+      
+      - name: Build
+        working-directory: examples/advanced-task-manager
+        run: npm run build
 
-  build:
+  test-ecommerce:
+    name: Test E-Commerce Platform
     runs-on: ubuntu-latest
-    needs: lint-and-test
     
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: examples/ecommerce-platform/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: examples/ecommerce-platform
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: examples/ecommerce-platform
+        run: npm run lint
+      
+      - name: Type check
+        working-directory: examples/ecommerce-platform
+        run: npm run type-check
+      
+      - name: Run tests
+        working-directory: examples/ecommerce-platform
+        run: npm test
+      
+      - name: Build
+        working-directory: examples/ecommerce-platform
+        run: npm run build
+
+  test-social-dashboard:
+    name: Test Social Dashboard
+    runs-on: ubuntu-latest
     
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20.x'
-    
-    - name: Build examples
-      run: |
-        for dir in examples/*/; do
-          if [ -f "$dir/package.json" ]; then
-            echo "Building $(basename $dir)"
-            cd "$dir"
-            npm ci
-            npm run build
-            cd ../..
-          fi
-        done
-    
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: dist-files
-        path: examples/*/dist
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: examples/social-dashboard/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: examples/social-dashboard
+        run: npm ci
+      
+      - name: Run linter
+        working-directory: examples/social-dashboard
+        run: npm run lint
+      
+      - name: Run tests
+        working-directory: examples/social-dashboard
+        run: npm test -- --coverage
+      
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: examples/social-dashboard/coverage/coverage-final.json
+          flags: social-dashboard
+      
+      - name: Build
+        working-directory: examples/social-dashboard
+        run: npm run build
