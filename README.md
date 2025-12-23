@@ -1,19 +1,20 @@
-# 🚀 React Advanced Guide - Complete Project Collection
+# 🚀 React Advanced Guide - Complete Learning Platform
 
 [![CI Status](https://github.com/GUEDDES/react-course-advanced-guide/workflows/CI/badge.svg)](https://github.com/GUEDDES/react-course-advanced-guide/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A comprehensive collection of **5 production-ready React projects** demonstrating advanced concepts, best practices, and modern development patterns. Perfect for learning, teaching, or using as starter templates.
+A comprehensive collection of **5 production-ready React projects** and **4 complete courses** demonstrating advanced concepts, best practices, and modern development patterns. Perfect for learning, teaching, or using as starter templates.
 
 ## 📚 Table of Contents
 
 - [Projects Overview](#-projects-overview)
+- [Courses Overview](#-courses-overview)
 - [Quick Start](#-quick-start)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
-- [Project Details](#-project-details)
+- [Learning Path](#-learning-path)
 - [Docker Deployment](#-docker-deployment)
 - [CI/CD Pipeline](#-cicd-pipeline)
 - [Contributing](#-contributing)
@@ -33,6 +34,78 @@ A comprehensive collection of **5 production-ready React projects** demonstratin
 
 ---
 
+## 🎓 Courses Overview
+
+| Course | Duration | Level | Topics Covered | Modules |
+|--------|----------|-------|----------------|----------|
+| **[React Hooks Deep Dive](./courses/react-hooks-deep-dive/README.md)** | 8-10h | Beginner-Advanced | All React Hooks, Custom Hooks | 16 modules |
+| **[Performance Optimization](./courses/react-performance-optimization/README.md)** | 10-12h | Intermediate-Advanced | Web Vitals, Code Splitting, Memoization | 20 modules |
+| **[Testing Masterclass](./courses/react-testing-masterclass/README.md)** | 12-15h | Beginner-Advanced | Jest, RTL, Playwright, E2E | 24 modules |
+| **[Design Patterns](./courses/react-design-patterns/README.md)** | 10-12h | Intermediate-Advanced | HOC, Render Props, Compound Components | 18 modules |
+
+### 🎯 Course Details
+
+#### 🎣 React Hooks Deep Dive
+**Master all React Hooks from basics to advanced patterns**
+
+- ✅ useState, useEffect, useContext
+- ✅ useMemo, useCallback, useRef
+- ✅ useReducer, useLayoutEffect
+- ✅ React 18+ hooks (useTransition, useDeferredValue)
+- ✅ Custom hooks creation
+- ✅ 50+ examples, 20+ exercises
+
+**[Start Course →](./courses/react-hooks-deep-dive/README.md)**
+
+---
+
+#### ⚡ React Performance Optimization
+**Build lightning-fast React applications**
+
+- ✅ Performance measurement (React DevTools Profiler)
+- ✅ Web Vitals optimization (LCP, FID, CLS)
+- ✅ Memoization techniques
+- ✅ Code splitting & lazy loading
+- ✅ Virtual scrolling
+- ✅ Bundle size reduction
+- ✅ Before/After benchmarks
+
+**[Start Course →](./courses/react-performance-optimization/README.md)**
+
+---
+
+#### 🧪 React Testing Masterclass
+**Write comprehensive tests for React applications**
+
+- ✅ Jest & Vitest setup
+- ✅ React Testing Library
+- ✅ Component & Hook testing
+- ✅ Integration testing
+- ✅ E2E testing with Playwright
+- ✅ Mocking strategies (MSW)
+- ✅ TDD (Test-Driven Development)
+- ✅ 100+ test examples
+
+**[Start Course →](./courses/react-testing-masterclass/README.md)**
+
+---
+
+#### 🎨 React Design Patterns
+**Master advanced patterns for scalable apps**
+
+- ✅ Compound Components
+- ✅ Custom Hooks pattern
+- ✅ Provider pattern
+- ✅ Container/Presentational
+- ✅ State Reducer pattern
+- ✅ HOC & Render Props (legacy)
+- ✅ Error Boundaries
+- ✅ 30+ pattern examples
+
+**[Start Course →](./courses/react-design-patterns/README.md)**
+
+---
+
 ## ⚡ Quick Start
 
 ### Prerequisites
@@ -41,7 +114,7 @@ A comprehensive collection of **5 production-ready React projects** demonstratin
 - npm or yarn
 - Git
 
-### Installation
+### For Projects
 
 ```bash
 # Clone the repository
@@ -57,16 +130,17 @@ npm install
 npm run dev
 ```
 
-The app will open at `http://localhost:3000`
-
-### Using Docker
+### For Courses
 
 ```bash
-# Navigate to project
-cd examples/advanced-task-manager
+# Navigate to a course
+cd react-course-advanced-guide/courses/react-hooks-deep-dive
 
-# Build and run with Docker Compose
-docker-compose up -d
+# Install dependencies
+npm install
+
+# Start course examples
+npm run dev
 ```
 
 ---
@@ -83,42 +157,15 @@ docker-compose up -d
 - ✅ Docker support
 - ✅ CI/CD ready
 
-### Project-Specific Features
+### Course Features
 
-#### 🎬 Movie App
-- Movie search with OMDB API
-- Responsive grid layout
-- Loading states
-- Error handling
-
-#### 📦 State Management Demo
-- Zustand store implementation
-- Counter with persist
-- Best practices examples
-
-#### ✅ Advanced Task Manager
-- Complete CRUD operations
-- Drag & Drop task reordering
-- Multi-criteria filtering
-- CSV/JSON export
-- Analytics dashboard
-- Dark mode ready
-
-#### 🛒 E-Commerce Platform
-- Product catalog with search
-- Shopping cart with Redux Toolkit
-- Stripe payment integration
-- TypeScript throughout
-- Multi-step checkout
-- OAuth authentication (Google, GitHub)
-
-#### 📱 Social Media Dashboard
-- Real-time metrics via WebSockets
-- Post scheduling
-- Unified inbox
-- Analytics & reporting
-- Multi-platform support (Twitter, Instagram, LinkedIn)
-- Auto-reconnect WebSocket
+- ✅ Step-by-step modules
+- ✅ Interactive examples
+- ✅ Hands-on exercises
+- ✅ Real-world projects
+- ✅ Quiz & solutions
+- ✅ Cheat sheets
+- ✅ Progress tracking
 
 ---
 
@@ -139,173 +186,115 @@ docker-compose up -d
 - **Redux Toolkit** - Complex state with RTK Query (E-Commerce)
 - **React Query** - Server state management (Social Dashboard)
 
-### UI & Styling
-
-- **CSS Modules** - Scoped styling
-- **React DnD** - Drag and drop (Task Manager)
-- **Recharts** - Data visualization (Task Manager)
-- **date-fns** - Date formatting
-
-### Additional Libraries
-
-- **React Router** - Navigation
-- **React Hook Form** - Form management
-- **Zod** - Schema validation
-- **Stripe Elements** - Payment processing
-- **WebSocket (ws)** - Real-time communication
-- **uuid** - Unique ID generation
-
-### Development Tools
+### Testing
 
 - **Vitest** - Unit testing
+- **React Testing Library** - Component testing
 - **Playwright** - E2E testing
-- **ESLint** - Linting
-- **Prettier** - Code formatting
-- **Docker** - Containerization
+- **MSW** - API mocking
+
+### Performance
+
+- **React DnD** - Drag and drop
+- **react-window** - Virtual scrolling
+- **Recharts** - Data visualization
+- **web-vitals** - Performance monitoring
 
 ---
 
-## 📁 Project Details
+## 📚 Learning Path
 
-### 1. 🎬 Movie App (Beginner)
+### 🌱 Beginner Track (2-3 weeks)
 
-**Path:** `examples/movie-app`
+**Week 1: Fundamentals**
+1. Movie App → Basic hooks & API
+2. State Management Demo → Zustand basics
+3. **Course:** React Hooks Deep Dive (Modules 1-3)
 
-**What You'll Learn:**
-- useState and useEffect hooks
-- API integration with fetch
-- Conditional rendering
-- Props and component composition
-- Loading and error states
+**Week 2: Intermediate Concepts**
+4. Advanced Task Manager → Complex state, routing
+5. **Course:** Testing Masterclass (Modules 1-7)
 
-**Run:**
-```bash
-cd examples/movie-app
-npm install && npm run dev
-```
-
-**[Full Documentation](examples/movie-app/README.md)**
+**Week 3: Practice**
+6. Build mini-projects from courses
+7. Complete exercises
 
 ---
 
-### 2. 📦 State Management Demo (Beginner)
+### 🚀 Intermediate Track (4-5 weeks)
 
-**Path:** `examples/state-management-demo`
+**Week 1-2: Advanced Projects**
+1. E-Commerce Platform → TypeScript, Redux, Stripe
+2. Social Dashboard → WebSockets, real-time
 
-**What You'll Learn:**
-- Zustand store setup
-- Global state management
-- State persistence
-- Actions and selectors
+**Week 3: Performance**
+3. **Course:** Performance Optimization (Full)
+4. Optimize previous projects
 
-**Run:**
-```bash
-cd examples/state-management-demo
-npm install && npm run dev
-```
+**Week 4: Patterns**
+5. **Course:** Design Patterns (Full)
+6. Refactor code using patterns
 
-**[Full Documentation](examples/state-management-demo/README.md)**
-
----
-
-### 3. ✅ Advanced Task Manager (Intermediate)
-
-**Path:** `examples/advanced-task-manager`
-
-**What You'll Learn:**
-- Complex Zustand patterns
-- Drag and drop implementation
-- Advanced filtering and sorting
-- Data export (CSV/JSON)
-- Dashboard with statistics
-- Modal patterns
-- Multi-page routing
-
-**Run:**
-```bash
-cd examples/advanced-task-manager
-npm install && npm run dev
-```
-
-**Key Features:**
-- 📊 Real-time statistics dashboard
-- 🎯 Multi-criteria filtering (status, priority, category)
-- 📅 Due date management
-- 🏷️ Tagging system
-- 💬 Comments on tasks
-- 💾 Export to CSV/JSON
-- ⌨️ Keyboard shortcuts
-
-**[Full Documentation](examples/advanced-task-manager/README.md)** | **[Screenshots](examples/advanced-task-manager/SCREENSHOTS.md)** | **[Deployment Guide](examples/advanced-task-manager/DEPLOYMENT.md)**
+**Week 5: Testing**
+7. **Course:** Testing Masterclass (Advanced modules)
+8. Write comprehensive test suites
 
 ---
 
-### 4. 🛒 E-Commerce Platform (Advanced)
+### 🎯 Advanced Track (Self-Paced)
 
-**Path:** `examples/ecommerce-platform`
+**Master All Content:**
+- ✅ Complete all 5 projects
+- ✅ Finish all 4 courses (78 modules total)
+- ✅ Build portfolio projects
+- ✅ Contribute to open source
 
-**What You'll Learn:**
-- Redux Toolkit with RTK Query
-- TypeScript in React
-- Stripe payment integration
-- OAuth authentication
-- Form validation with Zod
-- Shopping cart logic
-- Multi-step forms
+**Specialization Paths:**
 
-**Run:**
-```bash
-cd examples/ecommerce-platform
-cp .env.example .env  # Configure your Stripe keys
-npm install && npm run dev
-```
+**Path A: Performance Expert**
+→ Performance Optimization Course
+→ Optimize all projects
+→ Build performance monitoring dashboard
 
-**Key Features:**
-- 🛒 Full shopping cart functionality
-- 💳 Stripe payment processing
-- 🔐 OAuth authentication (Google, GitHub)
-- 📦 Inventory management
-- 🎫 Promo codes
-- 📊 Admin dashboard
-- 📧 Order confirmation emails
+**Path B: Testing Specialist**
+→ Testing Masterclass
+→ Write tests for all projects
+→ Achieve 90%+ coverage
 
-**[Full Documentation](examples/ecommerce-platform/README.md)** | **[Screenshots](examples/ecommerce-platform/SCREENSHOTS.md)**
+**Path C: Architecture Guru**
+→ Design Patterns Course
+→ Refactor projects with patterns
+→ Create component library
 
 ---
 
-### 5. 📱 Social Media Dashboard (Advanced)
+## 📁 Repository Structure
 
-**Path:** `examples/social-dashboard`
-
-**What You'll Learn:**
-- WebSocket real-time communication
-- Hybrid state management (Zustand + React Query)
-- Custom hooks with complex logic
-- Auto-reconnecting WebSocket
-- Server-side event handling
-- Testing WebSocket connections
-
-**Run:**
-```bash
-# Terminal 1 - Start WebSocket server
-cd examples/social-dashboard/server
-npm install && npm start
-
-# Terminal 2 - Start React app
-cd examples/social-dashboard
-npm install && npm run dev
 ```
-
-**Key Features:**
-- 🔴 Live metrics updates via WebSockets
-- 📅 Post scheduling calendar
-- 💬 Unified inbox (Twitter, Instagram, LinkedIn)
-- 📈 Analytics dashboard
-- 🔔 Smart notifications
-- 🏷️ Hashtag monitoring
-- 📊 Growth trends visualization
-
-**[Full Documentation](examples/social-dashboard/README.md)** | **[WebSocket Hook Tests](examples/social-dashboard/src/tests/useWebSocket.test.js)**
+react-course-advanced-guide/
+├── 📁 examples/              # 5 Production Projects
+│   ├── movie-app/
+│   ├── state-management-demo/
+│   ├── advanced-task-manager/
+│   ├── ecommerce-platform/
+│   └── social-dashboard/
+│
+├── 📁 courses/               # 4 Complete Courses
+│   ├── react-hooks-deep-dive/         (16 modules)
+│   ├── react-performance-optimization/ (20 modules)
+│   ├── react-testing-masterclass/     (24 modules)
+│   └── react-design-patterns/         (18 modules)
+│
+├── 📁 .github/workflows/    # CI/CD
+│   ├── ci.yml
+│   └── deploy.yml
+│
+├── 📄 README.md
+├── 📄 CONTRIBUTING.md
+├── 📄 COMPARISON.md
+├── 📄 TROUBLESHOOTING.md
+└── 📄 LICENSE
+```
 
 ---
 
@@ -329,21 +318,9 @@ cd examples/advanced-task-manager && docker-compose up -d
 # E-Commerce on port 3001
 cd examples/ecommerce-platform && docker-compose up -d
 
-# Social Dashboard on port 3002 (includes WebSocket server)
+# Social Dashboard on port 3002
 cd examples/social-dashboard && docker-compose up -d
 ```
-
-### Production Build
-
-Each Dockerfile uses multi-stage builds:
-1. **Builder stage** - Installs deps and builds app
-2. **Production stage** - Nginx serves static files
-
-Features:
-- ⚡ Optimized bundle size
-- 🛡️ Security headers configured
-- 📊 Health checks included
-- 🗃️ Gzip compression enabled
 
 ---
 
@@ -351,120 +328,78 @@ Features:
 
 ### GitHub Actions Workflows
 
-#### Continuous Integration (`.github/workflows/ci.yml`)
+**Continuous Integration** - Runs on every push:
+- ✅ Lint all projects
+- ✅ Type checking
+- ✅ Unit tests
+- ✅ Build verification
+- ✅ Coverage reports
 
-Runs on every push and PR:
-- ✅ Install dependencies
-- ✅ Run ESLint
-- ✅ Type checking (TypeScript projects)
-- ✅ Run unit tests
-- ✅ Run build
-- ✅ Upload coverage reports
-
-#### Deployment (`.github/workflows/deploy.yml`)
-
-Triggers:
-- Manual workflow dispatch
-- Commit messages with `[deploy-*]` tags
-
-Actions:
+**Deployment** - Manual or tag-triggered:
 - 🚀 Deploy to Vercel
 - 🐳 Build Docker images
 - 📦 Push to DockerHub
 
-### Setting Up Secrets
+---
 
-Add these secrets in GitHub repository settings:
+## 📊 Course Statistics
 
-```
-VERCEL_TOKEN=your_vercel_token
-VERCEL_ORG_ID=your_org_id
-VERCEL_PROJECT_ID_TASK=task_manager_project_id
-VERCEL_PROJECT_ID_ECOMMERCE=ecommerce_project_id
-DOCKERHUB_USERNAME=your_dockerhub_username
-DOCKERHUB_TOKEN=your_dockerhub_token
-STRIPE_PUBLIC_KEY=pk_test_...
-```
+| Metric | Total |
+|--------|-------|
+| **Courses** | 4 |
+| **Modules** | 78 |
+| **Examples** | 200+ |
+| **Exercises** | 60+ |
+| **Projects** | 10+ |
+| **Hours of Content** | 40-49h |
 
 ---
 
-## 📚 Learning Path
+## 📖 Documentation
 
-### Beginner Track
-1. Start with **Movie App** - Learn basic hooks and API calls
-2. Move to **State Management Demo** - Understand global state
+### Main Guides
+- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
+- **[Project Comparison](COMPARISON.md)** - Detailed comparison
+- **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues
 
-### Intermediate Track
-3. Build **Advanced Task Manager** - Complex state, routing, filters
+### Project-Specific
+- [Task Manager Docs](./examples/advanced-task-manager/README.md)
+- [E-Commerce Docs](./examples/ecommerce-platform/README.md)
+- [Social Dashboard Docs](./examples/social-dashboard/README.md)
 
-### Advanced Track
-4. Study **E-Commerce Platform** - TypeScript, Redux, payments
-5. Master **Social Dashboard** - WebSockets, real-time data
-
----
-
-## 🧑‍💻 Development Scripts
-
-All projects include these npm scripts:
-
-```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run preview      # Preview production build
-npm run lint         # Run ESLint
-npm run lint:fix     # Fix ESLint errors
-npm test             # Run tests
-npm run test:watch   # Watch mode for tests
-npm run test:coverage # Generate coverage report
-```
-
-Additional scripts (project-specific):
-```bash
-npm run type-check   # TypeScript type checking (E-Commerce)
-npm run format       # Prettier formatting
-```
+### Course-Specific
+- [Hooks Course](./courses/react-hooks-deep-dive/README.md)
+- [Performance Course](./courses/react-performance-optimization/README.md)
+- [Testing Course](./courses/react-testing-masterclass/README.md)
+- [Patterns Course](./courses/react-design-patterns/README.md)
 
 ---
 
-## 🐛 Troubleshooting
+## 🎯 Use Cases
 
-### Common Issues
+### For Students
+- 📖 Learn React from basics to advanced
+- 🏋️ Practice with real projects
+- 📝 Complete exercises and quizzes
+- 🎓 Build portfolio
 
-**Port already in use:**
-```bash
-# Kill process on port 3000
-lsof -ti:3000 | xargs kill -9  # macOS/Linux
-netstat -ano | findstr :3000   # Windows
-```
+### For Teachers
+- 📚 Ready-to-use curriculum
+- 📊 Structured learning path
+- 🎯 Hands-on exercises
+- 📹 Example-rich content
 
-**Dependencies not installing:**
-```bash
-# Clear cache and reinstall
-rm -rf node_modules package-lock.json
-npm cache clean --force
-npm install
-```
+### For Developers
+- 🚀 Starter templates
+- 📖 Reference implementations
+- 🛠️ Best practices
+- ⚡ Performance patterns
 
-**Build errors:**
-```bash
-# Ensure Node version is 18+
-node --version
-
-# Update npm
-npm install -g npm@latest
-```
-
-**WebSocket connection fails:**
-```bash
-# Make sure WebSocket server is running
-cd examples/social-dashboard/server
-npm start
-
-# Check if port 8080 is available
-lsof -i :8080
-```
-
-**[Full Troubleshooting Guide](TROUBLESHOOTING.md)**
+### For Companies
+- 👨‍💼 Onboarding material
+- 📈 Skill assessment
+- 🏗️ Architecture examples
+- 🧪 Testing standards
 
 ---
 
@@ -480,44 +415,32 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md).
 - ✨ Submit pull requests
 - ⭐ Star the repository
 
-### Quick Contribution Steps
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
----
-
-## 📝 Documentation
-
-- **[Contributing Guide](CONTRIBUTING.md)** - How to contribute
-- **[Project Comparison](COMPARISON.md)** - Detailed comparison of all projects
-- **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
-- **Individual READMEs** - Each project has detailed documentation
-
----
-
-## 📊 Project Statistics
-
-- **Total Projects:** 5
-- **Total Files:** 150+
-- **Lines of Code:** ~7,000+
-- **Components:** 50+
-- **Custom Hooks:** 10+
-- **Test Coverage:** 80%+
-
 ---
 
 ## 🔗 Useful Links
 
 - [React Documentation](https://react.dev/)
 - [Vite Documentation](https://vitejs.dev/)
-- [Zustand Documentation](https://docs.pmnd.rs/zustand/getting-started/introduction)
-- [Redux Toolkit Documentation](https://redux-toolkit.js.org/)
-- [Stripe Documentation](https://stripe.com/docs)
-- [WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
+- [Testing Library](https://testing-library.com/)
+- [Playwright](https://playwright.dev/)
+- [Web.dev Performance](https://web.dev/performance/)
+
+---
+
+## 📊 Project + Course Statistics Combined
+
+| Category | Count |
+|----------|-------|
+| **Total Projects** | 5 |
+| **Total Courses** | 4 |
+| **Total Modules** | 78 |
+| **Total Files** | 300+ |
+| **Lines of Code** | 15,000+ |
+| **Components** | 80+ |
+| **Custom Hooks** | 20+ |
+| **Tests** | 100+ |
+| **Examples** | 200+ |
+| **Learning Hours** | 80-100h |
 
 ---
 
@@ -527,11 +450,7 @@ If you need help:
 
 1. Check the [Troubleshooting Guide](TROUBLESHOOTING.md)
 2. Search existing [GitHub Issues](https://github.com/GUEDDES/react-course-advanced-guide/issues)
-3. Open a new issue with:
-   - Project name
-   - Steps to reproduce
-   - Expected vs actual behavior
-   - Screenshots if applicable
+3. Open a new issue with details
 
 ---
 
@@ -549,13 +468,14 @@ If you find this repository helpful, please consider giving it a star! ⭐
 
 ## 🚀 What's Next?
 
-Upcoming features and projects:
-- [ ] Testing guide with examples
-- [ ] Performance optimization guide
-- [ ] Accessibility improvements
-- [ ] PWA features
-- [ ] GraphQL integration example
-- [ ] Next.js migration guide
+Upcoming additions:
+- [ ] Next.js integration course
+- [ ] GraphQL with React course
+- [ ] React Native course
+- [ ] Advanced animations course
+- [ ] Accessibility course
+- [ ] Video tutorials
+- [ ] Live coding sessions
 
 ---
 
@@ -566,11 +486,11 @@ Upcoming features and projects:
 
 ---
 
-## 🚀 Acknowledgments
+## 🙏 Acknowledgments
 
 - React team for the amazing framework
-- Open source community for the libraries used
-- Contributors who help improve this repository
+- Open source community
+- All contributors
 
 ---
 
@@ -578,6 +498,6 @@ Upcoming features and projects:
 
 **Built with ❤️ for the React community**
 
-[⬆ Back to Top](#-react-advanced-guide---complete-project-collection)
+**[⬆ Back to Top](#-react-advanced-guide---complete-learning-platform)**
 
 </div>
