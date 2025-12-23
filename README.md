@@ -5,7 +5,7 @@
 
 ## 🎯 Objectif du Repository
 
-Ce repository contient un **guide complet et avancé sur React.js**, conçu pour approfondir vos connaissances avec des exemples pratiques et des patterns professionnels. Il complète votre formation en proposant des implémentations alternatives et des cas d'usage avancés.
+Ce repository contient un **guide complet et avancé sur React.js**, conçu pour approfondir vos connaissances avec des exemples pratiques et des patterns professionnels.
 
 ## 📚 Structure du Cours
 
@@ -30,11 +30,11 @@ Ce repository contient un **guide complet et avancé sur React.js**, conçu pour
   - `useContext` et `useReducer`
   - Patterns Provider/Consumer
   - Limites de performance
-- **Zustand** (recommandé pour ce cours)
+- **Zustand**
   - Store minimaliste et performant
   - Sélecteurs optimisés
   - Middleware de persistance
-- **Redux Toolkit** (alternative entreprise)
+- **Redux Toolkit**
   - Slices et actions
   - RTK Query pour les API
   - Redux DevTools
@@ -82,7 +82,7 @@ Chaque module contient des exemples complets et fonctionnels :
 - **03-routing-api/** : Application multi-pages avec cache
 - **04-microfrontends/** : Architecture e-commerce distribuée
 
-## 💡 Bonnes Pratiques Enseignées
+## 💡 Bonnes Pratiques
 
 ✅ **Organisation du code**
 - Structure par fonctionnalités (feature-based)
@@ -131,32 +131,13 @@ Chaque module contient des exemples complets et fonctionnels :
 - [Redux DevTools](https://github.com/reduxjs/redux-devtools)
 - [Vite](https://vitejs.dev)
 
-## ⭐ Différences avec Votre Cours
+## 🎯 Parcours d'Apprentissage
 
-Ce repository **complète** votre formation en proposant :
-
-1. **Exemples alternatifs** - Nouvelles implémentations pour éviter l'auto-plagiat
-2. **Approfondissements** - Concepts avancés non couverts en cours
-3. **Comparaisons** - Multiple approches pour le même problème
-4. **Production-ready** - Code optimisé et testé
-
-### Exemples Spécifiques
-- **Au lieu de** Rick & Morty API → **Nous utilisons** Movie Database (TMDb)
-- **Au lieu de** système de favoris → **Nous implémentons** un panier e-commerce
-- **Patterns avancés** : Compound Components, Render Props, HOC
-
-## 🎯 Parcours d'Apprentissage Recommandé
-
-```mermaid
-graph TD
-    A[ES6 Fundamentals] --> B[React Hooks]
-    B --> C[State Management]
-    C --> D{Projet Simple?}
-    D -->|Oui| E[Context + useReducer]
-    D -->|Non| F[Zustand/Redux]
-    F --> G[Routing + API]
-    G --> H[Micro-frontends]
-```
+1. **ES6 Fundamentals** - Maîtriser les bases modernes de JavaScript
+2. **React Hooks** - Comprendre les hooks essentiels
+3. **State Management** - Choisir la bonne solution selon le projet
+4. **Routing + API** - Construire des applications multi-pages
+5. **Micro-frontends** - Architectures avancées pour grandes applications
 
 ## 🤝 Contribution
 
@@ -176,7 +157,7 @@ Ce projet est sous licence MIT - voir le fichier [LICENSE](LICENSE) pour plus de
 
 **Dr. Abdelweheb GUEDDES**
 - GitHub: [@GUEDDES](https://github.com/GUEDDES)
-- Email: [Voir profil GitHub](https://github.com/GUEDDES)
+- Company: AbdouSoft
 
 ---
 
