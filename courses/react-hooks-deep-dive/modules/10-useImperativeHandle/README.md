@@ -1,73 +1,100 @@
-# useImperativeHandle - Ref Customization Hook
+# Module 10: useImperativeHandle - Ref Customization Hook
 
 ## 🎯 Learning Objectives
 
-- ✅ Customize ref exposure
-- ✅ Create imperative APIs
+- ✅ Understand useImperativeHandle
+- ✅ Customize ref values
 - ✅ Use with forwardRef
-- ✅ Control child components
-- ✅ Build reusable components
+- ✅ Create imperative APIs
+- ✅ Know when to use it
 
 ---
 
 ## 📖 What is useImperativeHandle?
 
-Customizes the instance value exposed when using `ref` with `forwardRef`.
+Customizes the instance value exposed when using `ref`. Used with `forwardRef`.
 
 ```jsx
-useImperativeHandle(ref, createHandle, [deps]);
+useImperativeHandle(ref, () => ({
+  // Exposed methods/properties
+}), [dependencies]);
 ```
+
+**Why use it?**
+- Control what parent components can access
+- Hide implementation details
+- Provide custom API
 
 ---
 
-## 💻 Basic Examples
+## 💻 Basic Example
 
-### Example 1: Custom Input
+### Without useImperativeHandle
 
 ```jsx
-import { forwardRef, useRef, useImperativeHandle } from 'react';
+import { useRef, forwardRef } from 'react';
 
-const CustomInput = forwardRef((props, ref) => {
+const Input = forwardRef((props, ref) => {
+  return <input ref={ref} {...props} />;
+});
+
+function Parent() {
   const inputRef = useRef();
 
+  return (
+    <div>
+      <Input ref={inputRef} />
+      {/* ✅ Can access ALL input DOM methods */}
+      <button onClick={() => inputRef.current.focus()}>Focus</button>
+      <button onClick={() => inputRef.current.select()}>Select</button>
+    </div>
+  );
+}
+```
+
+### With useImperativeHandle
+
+```jsx
+import { useRef, forwardRef, useImperativeHandle } from 'react';
+
+const Input = forwardRef((props, ref) => {
+  const inputRef = useRef();
+
+  // Expose ONLY specific methods
   useImperativeHandle(ref, () => ({
     focus: () => {
       inputRef.current.focus();
     },
     clear: () => {
       inputRef.current.value = '';
-    },
-    setValue: (value) => {
-      inputRef.current.value = value;
-    },
-    getValue: () => {
-      return inputRef.current.value;
     }
   }));
 
   return <input ref={inputRef} {...props} />;
 });
 
-// Usage
-function App() {
+function Parent() {
   const inputRef = useRef();
 
   return (
     <div>
-      <CustomInput ref={inputRef} placeholder="Enter text" />
+      <Input ref={inputRef} />
       <button onClick={() => inputRef.current.focus()}>Focus</button>
       <button onClick={() => inputRef.current.clear()}>Clear</button>
-      <button onClick={() => inputRef.current.setValue('Hello')}>Set Value</button>
-      <button onClick={() => alert(inputRef.current.getValue())}>Get Value</button>
+      {/* ❌ inputRef.current.select() - NOT available */}
     </div>
   );
 }
 ```
 
-### Example 2: Video Player
+---
+
+## 🎨 Real-World Examples
+
+### Example 1: Custom Video Player
 
 ```jsx
-import { forwardRef, useRef, useImperativeHandle, useState } from 'react';
+import { useRef, forwardRef, useImperativeHandle, useState } from 'react';
 
 const VideoPlayer = forwardRef(({ src }, ref) => {
   const videoRef = useRef();
@@ -82,19 +109,18 @@ const VideoPlayer = forwardRef(({ src }, ref) => {
       videoRef.current.pause();
       setIsPlaying(false);
     },
-    stop: () => {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-      setIsPlaying(false);
-    },
-    setVolume: (volume) => {
-      videoRef.current.volume = Math.max(0, Math.min(1, volume));
-    },
-    seekTo: (time) => {
+    seek: (time) => {
       videoRef.current.currentTime = time;
     },
-    getCurrentTime: () => videoRef.current.currentTime,
-    getDuration: () => videoRef.current.duration,
+    getCurrentTime: () => {
+      return videoRef.current.currentTime;
+    },
+    getDuration: () => {
+      return videoRef.current.duration;
+    },
+    setVolume: (level) => {
+      videoRef.current.volume = Math.max(0, Math.min(1, level));
+    },
     isPlaying: () => isPlaying
   }));
 
@@ -108,23 +134,20 @@ function App() {
   return (
     <div>
       <VideoPlayer ref={playerRef} src="video.mp4" />
+      
       <button onClick={() => playerRef.current.play()}>Play</button>
       <button onClick={() => playerRef.current.pause()}>Pause</button>
-      <button onClick={() => playerRef.current.stop()}>Stop</button>
+      <button onClick={() => playerRef.current.seek(0)}>Restart</button>
       <button onClick={() => playerRef.current.setVolume(0.5)}>50% Volume</button>
     </div>
   );
 }
 ```
 
----
-
-## 🎯 Advanced Examples
-
-### Example 3: Modal with Imperative API
+### Example 2: Modal Component
 
 ```jsx
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { useRef, forwardRef, useImperativeHandle, useState } from 'react';
 
 const Modal = forwardRef(({ title, children }, ref) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -139,13 +162,11 @@ const Modal = forwardRef(({ title, children }, ref) => {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal">
-        <div className="modal-header">
-          <h2>{title}</h2>
-          <button onClick={() => setIsOpen(false)}>×</button>
-        </div>
-        <div className="modal-body">{children}</div>
+    <div className="modal-overlay" onClick={() => setIsOpen(false)}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <h2>{title}</h2>
+        {children}
+        <button onClick={() => setIsOpen(false)}>Close</button>
       </div>
     </div>
   );
@@ -153,79 +174,81 @@ const Modal = forwardRef(({ title, children }, ref) => {
 
 // Usage
 function App() {
-  const confirmModalRef = useRef();
-  const infoModalRef = useRef();
-
-  const handleDelete = () => {
-    confirmModalRef.current.open();
-  };
+  const modalRef = useRef();
 
   return (
     <div>
-      <button onClick={handleDelete}>Delete</button>
-      <button onClick={() => infoModalRef.current.open()}>Info</button>
-
-      <Modal ref={confirmModalRef} title="Confirm Delete">
-        <p>Are you sure?</p>
-        <button onClick={() => confirmModalRef.current.close()}>Cancel</button>
-        <button>Delete</button>
-      </Modal>
-
-      <Modal ref={infoModalRef} title="Information">
-        <p>Some info here</p>
+      <button onClick={() => modalRef.current.open()}>Open Modal</button>
+      
+      <Modal ref={modalRef} title="My Modal">
+        <p>Modal content here</p>
       </Modal>
     </div>
   );
 }
 ```
 
-### Example 4: Form with Validation
+### Example 3: Form Component
 
 ```jsx
-import { forwardRef, useImperativeHandle, useState } from 'react';
+import { useRef, forwardRef, useImperativeHandle, useState } from 'react';
 
-const Form = forwardRef(({ onSubmit, children }, ref) => {
-  const [values, setValues] = useState({});
+const Form = forwardRef(({ onSubmit }, ref) => {
+  const [values, setValues] = useState({ name: '', email: '' });
   const [errors, setErrors] = useState({});
 
   useImperativeHandle(ref, () => ({
     submit: () => {
-      const validationErrors = validate(values);
-      if (Object.keys(validationErrors).length === 0) {
+      if (validate()) {
         onSubmit(values);
-        return true;
-      } else {
-        setErrors(validationErrors);
-        return false;
       }
     },
     reset: () => {
-      setValues({});
+      setValues({ name: '', email: '' });
       setErrors({});
     },
-    setValues: (newValues) => setValues(newValues),
-    getValues: () => values,
     setFieldValue: (field, value) => {
       setValues(prev => ({ ...prev, [field]: value }));
     },
-    validateField: (field) => {
-      const fieldError = validateSingleField(field, values[field]);
-      setErrors(prev => ({ ...prev, [field]: fieldError }));
-      return !fieldError;
-    }
+    getValues: () => values,
+    isValid: () => Object.keys(validate()).length === 0
   }));
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    ref.current?.submit();
+  const validate = () => {
+    const newErrors = {};
+    if (!values.name) newErrors.name = 'Required';
+    if (!values.email) newErrors.email = 'Required';
+    if (values.email && !values.email.includes('@')) {
+      newErrors.email = 'Invalid email';
+    }
+    setErrors(newErrors);
+    return newErrors;
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      {typeof children === 'function' 
-        ? children({ values, errors, setValues, setErrors })
-        : children
-      }
+    <form onSubmit={e => {
+      e.preventDefault();
+      if (validate()) onSubmit(values);
+    }}>
+      <div>
+        <input
+          value={values.name}
+          onChange={e => setValues({ ...values, name: e.target.value })}
+          placeholder="Name"
+        />
+        {errors.name && <span>{errors.name}</span>}
+      </div>
+      
+      <div>
+        <input
+          value={values.email}
+          onChange={e => setValues({ ...values, email: e.target.value })}
+          placeholder="Email"
+        />
+        {errors.email && <span>{errors.email}</span>}
+      </div>
+      
+      <button type="submit">Submit</button>
     </form>
   );
 });
@@ -234,32 +257,20 @@ const Form = forwardRef(({ onSubmit, children }, ref) => {
 function App() {
   const formRef = useRef();
 
-  const handleSave = () => {
-    if (formRef.current.submit()) {
-      console.log('Form submitted');
+  const handleExternalSubmit = () => {
+    if (formRef.current.isValid()) {
+      formRef.current.submit();
+    } else {
+      alert('Form is invalid');
     }
-  };
-
-  const handleReset = () => {
-    formRef.current.reset();
-  };
-
-  const fillTestData = () => {
-    formRef.current.setValues({
-      name: 'John Doe',
-      email: 'john@example.com'
-    });
   };
 
   return (
     <div>
-      <button onClick={fillTestData}>Fill Test Data</button>
-      <button onClick={handleSave}>Save</button>
-      <button onClick={handleReset}>Reset</button>
-
-      <Form ref={formRef} onSubmit={console.log}>
-        {/* Form fields */}
-      </Form>
+      <Form ref={formRef} onSubmit={data => console.log(data)} />
+      
+      <button onClick={handleExternalSubmit}>Submit Externally</button>
+      <button onClick={() => formRef.current.reset()}>Reset</button>
     </div>
   );
 }
@@ -269,86 +280,90 @@ function App() {
 
 ## ⚠️ Best Practices
 
-### ✅ Do: Limit Exposed API
+### ✅ Do's
 
 ```jsx
-// ✅ Good - only expose what's needed
+// ✅ Expose minimal API
 useImperativeHandle(ref, () => ({
-  focus: () => inputRef.current.focus(),
-  clear: () => inputRef.current.value = ''
+  focus: () => inputRef.current.focus()
 }));
 
-// ❌ Bad - exposing entire DOM element
-useImperativeHandle(ref, () => inputRef.current);
+// ✅ Use meaningful method names
+useImperativeHandle(ref, () => ({
+  openModal: () => setIsOpen(true),
+  closeModal: () => setIsOpen(false)
+}));
+
+// ✅ Include dependencies
+useImperativeHandle(ref, () => ({
+  getValue: () => value
+}), [value]);
 ```
 
-### ✅ Do: Use TypeScript
-
-```typescript
-interface CustomInputHandle {
-  focus: () => void;
-  clear: () => void;
-  getValue: () => string;
-}
-
-const CustomInput = forwardRef<CustomInputHandle, Props>((props, ref) => {
-  // ...
-});
-```
-
-### ❌ Don't: Overuse Imperative API
+### ❌ Don'ts
 
 ```jsx
-// ❌ Bad - props would be better
-const Component = forwardRef((props, ref) => {
-  const [visible, setVisible] = useState(false);
-  
-  useImperativeHandle(ref, () => ({
-    show: () => setVisible(true),
-    hide: () => setVisible(false)
-  }));
-  // ...
-});
+// ❌ Exposing entire internal ref
+useImperativeHandle(ref, () => internalRef.current);
 
-// ✅ Good - use props
-function Component({ visible, onVisibilityChange }) {
-  // ...
-}
+// ❌ Mutating internal state directly
+useImperativeHandle(ref, () => ({
+  setState: setInternalState // Don't expose setState
+}));
+
+// ❌ Missing dependencies
+useImperativeHandle(ref, () => ({
+  getValue: () => value // Missing [value]
+}));
 ```
+
+---
+
+## 🆚 forwardRef vs useImperativeHandle
+
+| Approach | Use Case |
+|----------|----------|
+| **forwardRef only** | Full DOM access needed |
+| **+ useImperativeHandle** | Custom API, hide implementation |
 
 ---
 
 ## 🏋️ Exercises
 
-### Exercise 1: Carousel
-Create carousel with imperative controls.
+### Exercise 1: Audio Player
 
-**API:**
-- `next()`
-- `prev()`
-- `goTo(index)`
-- `getCurrentIndex()`
+Create audio player with custom API.
 
-### Exercise 2: Toast Notifications
-Build toast system.
+**Methods:**
+- play()
+- pause()
+- setVolume(level)
+- seek(time)
+- getProgress()
 
-**API:**
-- `success(message)`
-- `error(message)`
-- `warning(message)`
-- `clear()`
+### Exercise 2: Carousel
 
-### Exercise 3: Drawer
-Create drawer component.
+Build carousel with imperative controls.
 
-**API:**
-- `open()`
-- `close()`
-- `toggle()`
-- `setContent(content)`
+**Methods:**
+- next()
+- previous()
+- goToSlide(index)
+- getCurrentSlide()
+
+### Exercise 3: Drawing Canvas
+
+Create canvas with drawing API.
+
+**Methods:**
+- clear()
+- undo()
+- redo()
+- save()
+- load(data)
 
 ---
 
-## ➡️ Next Module
+## ⏭️ Next Module
 
-[useTransition - Concurrent Rendering →](../11-useTransition/README.md)
+[React 18 Hooks (useTransition) →](../11-useTransition/README.md)

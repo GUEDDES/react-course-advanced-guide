@@ -1,135 +1,188 @@
-# useReducer - State Reducer Hook
+# Module 8: useReducer - State Management Hook
 
 ## 🎯 Learning Objectives
 
-- ✅ Understand reducers
-- ✅ Manage complex state
-- ✅ Use actions and dispatch
+- ✅ Understand useReducer
+- ✅ When to use vs useState
+- ✅ Write reducers and actions
+- ✅ Handle complex state logic
 - ✅ Combine with Context
-- ✅ Choose between useState and useReducer
 
 ---
 
 ## 📖 What is useReducer?
 
-useReducer is an alternative to useState for managing complex state logic with actions.
+An alternative to useState for managing complex state logic. Similar to Redux reducers.
 
 ```jsx
 const [state, dispatch] = useReducer(reducer, initialState);
 ```
 
-**Reducer Function:**
-```jsx
-function reducer(state, action) {
-  switch (action.type) {
-    case 'ACTION_TYPE':
-      return newState;
-    default:
-      return state;
-  }
-}
-```
+**Components:**
+- `state`: Current state value
+- `dispatch`: Function to send actions
+- `reducer`: Function that updates state
+- `initialState`: Initial state value
 
 ---
 
-## 💻 Basic Examples
+## 💻 Basic Example
 
-### Example 1: Counter
+### Counter with useReducer
 
 ```jsx
 import { useReducer } from 'react';
 
-function counterReducer(state, action) {
+// 1. Define initial state
+const initialState = { count: 0 };
+
+// 2. Define reducer function
+function reducer(state, action) {
   switch (action.type) {
-    case 'INCREMENT':
+    case 'increment':
       return { count: state.count + 1 };
-    case 'DECREMENT':
+    case 'decrement':
       return { count: state.count - 1 };
-    case 'RESET':
-      return { count: 0 };
+    case 'reset':
+      return initialState;
     default:
-      return state;
+      throw new Error(`Unknown action: ${action.type}`);
   }
 }
 
+// 3. Use in component
 function Counter() {
-  const [state, dispatch] = useReducer(counterReducer, { count: 0 });
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
     <div>
       <p>Count: {state.count}</p>
-      <button onClick={() => dispatch({ type: 'INCREMENT' })}>+</button>
-      <button onClick={() => dispatch({ type: 'DECREMENT' })}>-</button>
-      <button onClick={() => dispatch({ type: 'RESET' })}>Reset</button>
+      <button onClick={() => dispatch({ type: 'increment' })}>+</button>
+      <button onClick={() => dispatch({ type: 'decrement' })}>-</button>
+      <button onClick={() => dispatch({ type: 'reset' })}>Reset</button>
     </div>
   );
 }
 ```
 
-### Example 2: Todo List
+---
+
+## 🔄 useState vs useReducer
+
+### Use useState when:
+- ✅ Simple state (primitives)
+- ✅ Independent state updates
+- ✅ Few state transitions
+
+### Use useReducer when:
+- ✅ Complex state objects
+- ✅ Related state updates
+- ✅ Multiple sub-values
+- ✅ Next state depends on previous
+- ✅ State logic needs testing
+
+---
+
+## 💪 Complex Example: Todo App
 
 ```jsx
 import { useReducer } from 'react';
+
+const initialState = {
+  todos: [],
+  filter: 'all'
+};
 
 function todoReducer(state, action) {
   switch (action.type) {
     case 'ADD_TODO':
       return {
-        todos: [...state.todos, {
-          id: Date.now(),
-          text: action.payload,
-          completed: false
-        }]
+        ...state,
+        todos: [
+          ...state.todos,
+          {
+            id: Date.now(),
+            text: action.payload,
+            completed: false
+          }
+        ]
       };
-    
+
     case 'TOGGLE_TODO':
       return {
+        ...state,
         todos: state.todos.map(todo =>
           todo.id === action.payload
             ? { ...todo, completed: !todo.completed }
             : todo
         )
       };
-    
+
     case 'DELETE_TODO':
       return {
+        ...state,
         todos: state.todos.filter(todo => todo.id !== action.payload)
       };
-    
+
+    case 'SET_FILTER':
+      return {
+        ...state,
+        filter: action.payload
+      };
+
     case 'CLEAR_COMPLETED':
       return {
+        ...state,
         todos: state.todos.filter(todo => !todo.completed)
       };
-    
+
     default:
       return state;
   }
 }
 
 function TodoApp() {
-  const [state, dispatch] = useReducer(todoReducer, { todos: [] });
-  const [inputValue, setInputValue] = useState('');
+  const [state, dispatch] = useReducer(todoReducer, initialState);
+  const [input, setInput] = useState('');
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (inputValue.trim()) {
-      dispatch({ type: 'ADD_TODO', payload: inputValue });
-      setInputValue('');
+  const addTodo = () => {
+    if (input.trim()) {
+      dispatch({ type: 'ADD_TODO', payload: input });
+      setInput('');
     }
   };
 
+  const filteredTodos = state.todos.filter(todo => {
+    if (state.filter === 'active') return !todo.completed;
+    if (state.filter === 'completed') return todo.completed;
+    return true;
+  });
+
   return (
     <div>
-      <form onSubmit={handleSubmit}>
+      <div>
         <input
-          value={inputValue}
-          onChange={(e) => setInputValue(e.target.value)}
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyPress={e => e.key === 'Enter' && addTodo()}
         />
-        <button type="submit">Add</button>
-      </form>
+        <button onClick={addTodo}>Add</button>
+      </div>
+
+      <div>
+        <button onClick={() => dispatch({ type: 'SET_FILTER', payload: 'all' })}>
+          All
+        </button>
+        <button onClick={() => dispatch({ type: 'SET_FILTER', payload: 'active' })}>
+          Active
+        </button>
+        <button onClick={() => dispatch({ type: 'SET_FILTER', payload: 'completed' })}>
+          Completed
+        </button>
+      </div>
 
       <ul>
-        {state.todos.map(todo => (
+        {filteredTodos.map(todo => (
           <li key={todo.id}>
             <input
               type="checkbox"
@@ -156,238 +209,124 @@ function TodoApp() {
 
 ---
 
-## 🎯 Advanced Patterns
+## 🎨 Advanced Patterns
 
-### Example 3: Form State Management
+### Pattern 1: Lazy Initialization
 
 ```jsx
-import { useReducer } from 'react';
-
-const initialState = {
-  values: { email: '', password: '', username: '' },
-  errors: {},
-  touched: {},
-  isSubmitting: false
-};
-
-function formReducer(state, action) {
-  switch (action.type) {
-    case 'SET_FIELD_VALUE':
-      return {
-        ...state,
-        values: {
-          ...state.values,
-          [action.field]: action.value
-        },
-        errors: {
-          ...state.errors,
-          [action.field]: undefined
-        }
-      };
-    
-    case 'SET_FIELD_TOUCHED':
-      return {
-        ...state,
-        touched: {
-          ...state.touched,
-          [action.field]: true
-        }
-      };
-    
-    case 'SET_ERRORS':
-      return {
-        ...state,
-        errors: action.errors
-      };
-    
-    case 'SET_SUBMITTING':
-      return {
-        ...state,
-        isSubmitting: action.isSubmitting
-      };
-    
-    case 'RESET_FORM':
-      return initialState;
-    
-    default:
-      return state;
-  }
+function init(initialCount) {
+  return { count: initialCount };
 }
 
-function RegistrationForm() {
-  const [state, dispatch] = useReducer(formReducer, initialState);
+function Counter({ initialCount }) {
+  const [state, dispatch] = useReducer(reducer, initialCount, init);
+  // ...
+}
+```
 
-  const handleChange = (field) => (e) => {
-    dispatch({ type: 'SET_FIELD_VALUE', field, value: e.target.value });
-  };
+### Pattern 2: Action Creators
 
-  const handleBlur = (field) => () => {
-    dispatch({ type: 'SET_FIELD_TOUCHED', field });
-  };
+```jsx
+// Action creators
+const actions = {
+  increment: () => ({ type: 'INCREMENT' }),
+  decrement: () => ({ type: 'DECREMENT' }),
+  incrementBy: (amount) => ({ type: 'INCREMENT_BY', payload: amount }),
+  reset: () => ({ type: 'RESET' })
+};
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    dispatch({ type: 'SET_SUBMITTING', isSubmitting: true });
-    
-    try {
-      await registerUser(state.values);
-      dispatch({ type: 'RESET_FORM' });
-    } catch (errors) {
-      dispatch({ type: 'SET_ERRORS', errors });
-    } finally {
-      dispatch({ type: 'SET_SUBMITTING', isSubmitting: false });
-    }
-  };
+// Usage
+function Counter() {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        value={state.values.username}
-        onChange={handleChange('username')}
-        onBlur={handleBlur('username')}
-      />
-      {state.touched.username && state.errors.username && (
-        <span>{state.errors.username}</span>
-      )}
-
-      <button disabled={state.isSubmitting}>Submit</button>
-    </form>
+    <div>
+      <button onClick={() => dispatch(actions.increment())}>+</button>
+      <button onClick={() => dispatch(actions.incrementBy(5))}>+5</button>
+    </div>
   );
 }
 ```
 
-### Example 4: useReducer + Context (Global State)
+### Pattern 3: With Context (Global State)
 
 ```jsx
 import { createContext, useContext, useReducer } from 'react';
 
-const CartContext = createContext();
+const StateContext = createContext();
+const DispatchContext = createContext();
 
-function cartReducer(state, action) {
-  switch (action.type) {
-    case 'ADD_ITEM':
-      const existingItem = state.items.find(item => item.id === action.payload.id);
-      
-      if (existingItem) {
-        return {
-          ...state,
-          items: state.items.map(item =>
-            item.id === action.payload.id
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
-        };
-      }
-      
-      return {
-        ...state,
-        items: [...state.items, { ...action.payload, quantity: 1 }]
-      };
-    
-    case 'REMOVE_ITEM':
-      return {
-        ...state,
-        items: state.items.filter(item => item.id !== action.payload)
-      };
-    
-    case 'UPDATE_QUANTITY':
-      return {
-        ...state,
-        items: state.items.map(item =>
-          item.id === action.payload.id
-            ? { ...item, quantity: action.payload.quantity }
-            : item
-        )
-      };
-    
-    case 'CLEAR_CART':
-      return { items: [] };
-    
-    default:
-      return state;
-  }
-}
-
-export function CartProvider({ children }) {
-  const [state, dispatch] = useReducer(cartReducer, { items: [] });
-
-  const addItem = (item) => dispatch({ type: 'ADD_ITEM', payload: item });
-  const removeItem = (id) => dispatch({ type: 'REMOVE_ITEM', payload: id });
-  const updateQuantity = (id, quantity) => 
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, quantity } });
-  const clearCart = () => dispatch({ type: 'CLEAR_CART' });
-
-  const total = state.items.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
+function AppProvider({ children }) {
+  const [state, dispatch] = useReducer(reducer, initialState);
 
   return (
-    <CartContext.Provider value={{
-      items: state.items,
-      total,
-      addItem,
-      removeItem,
-      updateQuantity,
-      clearCart
-    }}>
-      {children}
-    </CartContext.Provider>
+    <StateContext.Provider value={state}>
+      <DispatchContext.Provider value={dispatch}>
+        {children}
+      </DispatchContext.Provider>
+    </StateContext.Provider>
   );
 }
 
-export function useCart() {
-  return useContext(CartContext);
+// Custom hooks
+function useAppState() {
+  return useContext(StateContext);
+}
+
+function useAppDispatch() {
+  return useContext(DispatchContext);
+}
+
+// Usage
+function Component() {
+  const state = useAppState();
+  const dispatch = useAppDispatch();
+
+  return (
+    <button onClick={() => dispatch({ type: 'ACTION' })}>
+      {state.value}
+    </button>
+  );
 }
 ```
-
----
-
-## 📊 useState vs useReducer
-
-| Scenario | Use useState | Use useReducer |
-|----------|--------------|----------------|
-| **Simple state** | ✅ | ❌ |
-| **Multiple related values** | ❌ | ✅ |
-| **Complex state transitions** | ❌ | ✅ |
-| **Next state depends on previous** | ✅ | ✅ |
-| **Shared logic** | ❌ | ✅ |
-| **Testing** | Easy | Easier |
 
 ---
 
 ## 🏋️ Exercises
 
 ### Exercise 1: Shopping Cart
+
 Build a shopping cart with useReducer.
 
 **Actions:**
-- Add item
-- Remove item
-- Update quantity
-- Apply coupon
-- Calculate total
+- ADD_ITEM
+- REMOVE_ITEM
+- UPDATE_QUANTITY
+- CLEAR_CART
+- APPLY_COUPON
 
-### Exercise 2: Multi-Step Form
-Create a wizard form.
+### Exercise 2: Form State Management
 
-**Requirements:**
-- Multiple steps
+Manage complex form state.
+
+**Features:**
+- Multiple fields
 - Validation
-- Progress tracking
-- Go back/forward
+- Error messages
+- Submission state
 
 ### Exercise 3: Game State
-Manage game state (tic-tac-toe).
 
-**Actions:**
-- Make move
-- Check winner
-- Reset game
-- Undo move
+Create a tic-tac-toe game.
+
+**State:**
+- Board (9 squares)
+- Current player
+- Winner
+- Game history
 
 ---
 
-## ➡️ Next Module
+## ⏭️ Next Module
 
-[useLayoutEffect - Synchronous Effect →](../09-useLayoutEffect/README.md)
+[useLayoutEffect - Synchronous Effects →](../09-useLayoutEffect/README.md)

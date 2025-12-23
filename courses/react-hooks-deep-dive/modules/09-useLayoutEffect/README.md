@@ -1,336 +1,336 @@
-# useLayoutEffect - Synchronous Effect Hook
+# Module 9: useLayoutEffect - Synchronous Effects Hook
 
 ## 🎯 Learning Objectives
 
 - ✅ Understand useLayoutEffect
-- ✅ Know difference from useEffect
+- ✅ Difference from useEffect
+- ✅ When to use it
+- ✅ Measure DOM elements
 - ✅ Prevent visual flicker
-- ✅ Measure DOM before paint
-- ✅ Use correctly and sparingly
 
 ---
 
-## 📖 useLayoutEffect vs useEffect
+## 📖 What is useLayoutEffect?
 
-### Execution Order
-
-```
-Render → useLayoutEffect → Browser Paint → useEffect
-```
-
-| Hook | When it runs | Blocks paint | Use case |
-|------|--------------|--------------|----------|
-| **useEffect** | After paint | ❌ No | Most side effects |
-| **useLayoutEffect** | Before paint | ✅ Yes | DOM measurements |
-
----
-
-## 💻 Examples
-
-### Example 1: Preventing Flicker
+Runs synchronously after DOM mutations but before browser paint.
 
 ```jsx
-import { useState, useLayoutEffect, useRef } from 'react';
+useLayoutEffect(() => {
+  // DOM mutations
+  return () => {
+    // Cleanup
+  };
+}, [dependencies]);
+```
 
-// ❌ With useEffect - flickers
-function TooltipWithEffect({ text }) {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const tooltipRef = useRef();
+---
+
+## 🆚 useEffect vs useLayoutEffect
+
+### Execution Timeline
+
+```
+1. React updates DOM
+2. useLayoutEffect runs ⚡ (SYNCHRONOUS - blocks paint)
+3. Browser paints screen 🎨
+4. useEffect runs ✨ (ASYNCHRONOUS)
+```
+
+### Visual Comparison
+
+```jsx
+// useEffect - may cause flicker
+function Component() {
+  const [color, setColor] = useState('red');
 
   useEffect(() => {
-    const rect = tooltipRef.current.getBoundingClientRect();
-    // User might see tooltip jump to new position
-    setPosition({ x: rect.width, y: rect.height });
+    // Runs AFTER paint - user sees red briefly
+    setColor('blue');
   }, []);
 
-  return (
-    <div ref={tooltipRef} style={{ left: position.x, top: position.y }}>
-      {text}
-    </div>
-  );
+  return <div style={{ color }}>Text</div>;
 }
 
-// ✅ With useLayoutEffect - no flicker
-function TooltipWithLayoutEffect({ text }) {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const tooltipRef = useRef();
+// useLayoutEffect - no flicker
+function Component() {
+  const [color, setColor] = useState('red');
 
   useLayoutEffect(() => {
-    const rect = tooltipRef.current.getBoundingClientRect();
-    // Position set before browser paints
-    setPosition({ x: rect.width, y: rect.height });
+    // Runs BEFORE paint - user only sees blue
+    setColor('blue');
   }, []);
 
-  return (
-    <div ref={tooltipRef} style={{ left: position.x, top: position.y }}>
-      {text}
-    </div>
-  );
+  return <div style={{ color }}>Text</div>;
 }
 ```
 
-### Example 2: Measuring DOM Elements
+---
+
+## 💻 Common Use Cases
+
+### Example 1: Measure DOM Element
 
 ```jsx
 import { useState, useLayoutEffect, useRef } from 'react';
 
-function AutoSizeTextarea() {
-  const textareaRef = useRef();
-  const [height, setHeight] = useState('auto');
+function Tooltip({ children, text }) {
+  const [tooltipHeight, setTooltipHeight] = useState(0);
+  const tooltipRef = useRef(null);
 
   useLayoutEffect(() => {
-    // Measure before paint
-    const scrollHeight = textareaRef.current.scrollHeight;
-    setHeight(`${scrollHeight}px`);
-  });
+    // Measure before paint to position correctly
+    const height = tooltipRef.current.getBoundingClientRect().height;
+    setTooltipHeight(height);
+  }, [text]); // Re-measure when text changes
 
   return (
-    <textarea
-      ref={textareaRef}
-      style={{ height }}
-      onChange={() => setHeight('auto')}
-    />
+    <div className="tooltip-container">
+      {children}
+      <div
+        ref={tooltipRef}
+        className="tooltip"
+        style={{ top: `-${tooltipHeight + 10}px` }}
+      >
+        {text}
+      </div>
+    </div>
   );
 }
 ```
 
-### Example 3: Scroll Position Restoration
+### Example 2: Scroll to Element
 
 ```jsx
 import { useLayoutEffect, useRef } from 'react';
 
-function ScrollRestoration({ scrollKey }) {
-  const containerRef = useRef();
+function ChatMessages({ messages }) {
+  const bottomRef = useRef(null);
 
   useLayoutEffect(() => {
-    // Restore scroll before paint
-    const savedPosition = sessionStorage.getItem(scrollKey);
-    if (savedPosition && containerRef.current) {
-      containerRef.current.scrollTop = parseInt(savedPosition, 10);
-    }
-
-    // Save on unmount
-    return () => {
-      if (containerRef.current) {
-        sessionStorage.setItem(
-          scrollKey,
-          containerRef.current.scrollTop.toString()
-        );
-      }
-    };
-  }, [scrollKey]);
+    // Scroll before paint - smooth UX
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   return (
-    <div ref={containerRef} style={{ height: '400px', overflow: 'auto' }}>
-      {/* Content */}
+    <div className="messages">
+      {messages.map(msg => (
+        <div key={msg.id}>{msg.text}</div>
+      ))}
+      <div ref={bottomRef} />
     </div>
   );
 }
 ```
 
-### Example 4: Animation Preparation
+### Example 3: Animate on Mount
 
 ```jsx
-import { useState, useLayoutEffect, useRef } from 'react';
+import { useLayoutEffect, useRef } from 'react';
 
-function AnimatedBox() {
-  const boxRef = useRef();
-  const [startPosition, setStartPosition] = useState(null);
+function FadeIn({ children }) {
+  const elementRef = useRef(null);
 
   useLayoutEffect(() => {
-    // Get initial position before paint
-    const rect = boxRef.current.getBoundingClientRect();
-    setStartPosition({ x: rect.left, y: rect.top });
+    const element = elementRef.current;
     
-    // Start animation after position is set
+    // Set initial state before paint
+    element.style.opacity = '0';
+    element.style.transform = 'translateY(20px)';
+
+    // Trigger animation
     requestAnimationFrame(() => {
-      boxRef.current.style.transform = 'translateX(100px)';
+      element.style.transition = 'all 0.3s';
+      element.style.opacity = '1';
+      element.style.transform = 'translateY(0)';
     });
   }, []);
 
-  return (
-    <div
-      ref={boxRef}
-      style={{
-        width: '100px',
-        height: '100px',
-        background: 'blue',
-        transition: 'transform 0.3s'
-      }}
-    />
-  );
+  return <div ref={elementRef}>{children}</div>;
 }
 ```
 
 ---
 
-## ⚠️ When to Use Each
+## 🎯 Real-World Examples
 
-### Use useEffect for:
-
-```jsx
-// ✅ Data fetching
-useEffect(() => {
-  fetchData().then(setData);
-}, []);
-
-// ✅ Subscriptions
-useEffect(() => {
-  const sub = subscribe();
-  return () => sub.unsubscribe();
-}, []);
-
-// ✅ Event listeners
-useEffect(() => {
-  window.addEventListener('resize', handleResize);
-  return () => window.removeEventListener('resize', handleResize);
-}, []);
-
-// ✅ Logging/Analytics
-useEffect(() => {
-  trackPageView();
-}, []);
-```
-
-### Use useLayoutEffect for:
-
-```jsx
-// ✅ DOM measurements
-useLayoutEffect(() => {
-  const height = elementRef.current.offsetHeight;
-  setCalculatedHeight(height);
-}, []);
-
-// ✅ Preventing flicker
-useLayoutEffect(() => {
-  // Position tooltip before user sees it
-  positionTooltip();
-}, []);
-
-// ✅ Scroll position
-useLayoutEffect(() => {
-  containerRef.current.scrollTop = savedPosition;
-}, []);
-
-// ✅ Synchronous mutations
-useLayoutEffect(() => {
-  elementRef.current.focus();
-}, []);
-```
-
----
-
-## 📊 Performance Considerations
-
-### ⚠️ useLayoutEffect Blocks Painting
-
-```jsx
-// ❌ Expensive operation - blocks paint
-useLayoutEffect(() => {
-  // Heavy computation
-  for (let i = 0; i < 1000000; i++) {
-    // ...
-  }
-}, []);
-
-// ✅ Move to useEffect if possible
-useEffect(() => {
-  // Heavy computation after paint
-  for (let i = 0; i < 1000000; i++) {
-    // ...
-  }
-}, []);
-```
-
----
-
-## 🎯 Real-World Example: Modal Positioning
+### Example 1: Dynamic Positioning
 
 ```jsx
 import { useState, useLayoutEffect, useRef } from 'react';
 
-function PositionedModal({ trigger, children }) {
-  const [isOpen, setIsOpen] = useState(false);
+function Dropdown({ trigger, children }) {
   const [position, setPosition] = useState({ top: 0, left: 0 });
-  const triggerRef = useRef();
-  const modalRef = useRef();
+  const triggerRef = useRef(null);
+  const menuRef = useRef(null);
+  const [isOpen, setIsOpen] = useState(false);
 
   useLayoutEffect(() => {
     if (!isOpen) return;
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
-    const modalRect = modalRef.current.getBoundingClientRect();
-    
-    // Calculate position before paint
-    let top = triggerRect.bottom + 8;
+    const menuRect = menuRef.current.getBoundingClientRect();
+    const viewportHeight = window.innerHeight;
+
+    let top = triggerRect.bottom;
     let left = triggerRect.left;
 
-    // Keep modal in viewport
-    if (left + modalRect.width > window.innerWidth) {
-      left = window.innerWidth - modalRect.width - 8;
-    }
-    
-    if (top + modalRect.height > window.innerHeight) {
-      top = triggerRect.top - modalRect.height - 8;
+    // Check if menu fits below trigger
+    if (top + menuRect.height > viewportHeight) {
+      // Position above
+      top = triggerRect.top - menuRect.height;
     }
 
     setPosition({ top, left });
   }, [isOpen]);
 
   return (
-    <>
+    <div>
       <div ref={triggerRef} onClick={() => setIsOpen(!isOpen)}>
         {trigger}
       </div>
       
       {isOpen && (
         <div
-          ref={modalRef}
+          ref={menuRef}
           style={{
             position: 'fixed',
-            top: position.top,
-            left: position.left,
-            zIndex: 1000
+            top: `${position.top}px`,
+            left: `${position.left}px`
           }}
         >
           {children}
         </div>
       )}
-    </>
+    </div>
+  );
+}
+```
+
+### Example 2: Text Truncation
+
+```jsx
+import { useState, useLayoutEffect, useRef } from 'react';
+
+function TruncatedText({ text, maxLines = 3 }) {
+  const [isTruncated, setIsTruncated] = useState(false);
+  const textRef = useRef(null);
+
+  useLayoutEffect(() => {
+    const element = textRef.current;
+    const lineHeight = parseInt(getComputedStyle(element).lineHeight);
+    const maxHeight = lineHeight * maxLines;
+
+    setIsTruncated(element.scrollHeight > maxHeight);
+  }, [text, maxLines]);
+
+  return (
+    <div>
+      <div
+        ref={textRef}
+        style={{
+          maxHeight: `${maxLines * 1.5}em`,
+          overflow: 'hidden'
+        }}
+      >
+        {text}
+      </div>
+      {isTruncated && <button>Read More</button>}
+    </div>
   );
 }
 ```
 
 ---
 
-## 🏋️ Exercises
+## ⚠️ When NOT to Use
 
-### Exercise 1: Dynamic Tooltip
-Create tooltip that positions itself intelligently.
+### ❌ Use useEffect Instead
 
-**Requirements:**
-- Auto-position based on viewport
-- No flicker
-- Arrow pointing to trigger
+```jsx
+// ❌ Don't use for data fetching
+useLayoutEffect(() => {
+  fetch('/api/data').then(setData);
+}, []);
 
-### Exercise 2: Masonry Layout
-Implement masonry grid layout.
+// ✅ Use useEffect
+useEffect(() => {
+  fetch('/api/data').then(setData);
+}, []);
 
-**Requirements:**
-- Measure item heights
-- Calculate positions
-- Animate placement
+// ❌ Don't use for subscriptions
+useLayoutEffect(() => {
+  const unsubscribe = subscribe();
+  return () => unsubscribe();
+}, []);
 
-### Exercise 3: Sticky Header
-Create sticky header with smooth transitions.
+// ✅ Use useEffect
+useEffect(() => {
+  const unsubscribe = subscribe();
+  return () => unsubscribe();
+}, []);
+```
 
-**Requirements:**
-- Measure header height
-- Calculate scroll thresholds
-- No visual jumps
+### ⚡ Performance Warning
+
+```jsx
+// ❌ Blocks rendering - use sparingly!
+useLayoutEffect(() => {
+  // Heavy computation
+  for (let i = 0; i < 1000000; i++) {
+    // ...
+  }
+});
+```
 
 ---
 
-## ➡️ Next Module
+## 📊 Performance Impact
+
+```jsx
+function PerformanceTest() {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    console.log('useEffect - non-blocking');
+  });
+
+  useLayoutEffect(() => {
+    console.log('useLayoutEffect - blocking');
+    // Simulating heavy work
+    const start = Date.now();
+    while (Date.now() - start < 100) {}
+  });
+
+  return <button onClick={() => setCount(count + 1)}>{count}</button>;
+}
+
+// Result: Button click feels sluggish due to useLayoutEffect blocking
+```
+
+---
+
+## 🏋️ Exercises
+
+### Exercise 1: Resizable Panel
+
+Create a panel that adjusts height based on content.
+
+**Requirements:**
+- Measure content height
+- Animate height changes
+- No visual flicker
+
+### Exercise 2: Virtual Keyboard
+
+Handle mobile virtual keyboard.
+
+**Requirements:**
+- Adjust layout when keyboard appears
+- Scroll to focused input
+- Use useLayoutEffect
+
+---
+
+## ⏭️ Next Module
 
 [useImperativeHandle - Ref Customization →](../10-useImperativeHandle/README.md)

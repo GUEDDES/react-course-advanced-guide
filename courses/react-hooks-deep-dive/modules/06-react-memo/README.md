@@ -1,18 +1,18 @@
-# React.memo - Component Memoization
+# Module 6: React.memo - Component Memoization
 
 ## 🎯 Learning Objectives
 
 - ✅ Understand React.memo
 - ✅ Prevent unnecessary re-renders
 - ✅ Use custom comparison functions
-- ✅ Combine with useMemo/useCallback
 - ✅ Know when NOT to use it
+- ✅ Combine with useMemo/useCallback
 
 ---
 
 ## 📖 What is React.memo?
 
-React.memo is a higher-order component that memoizes component output, preventing re-renders when props haven't changed.
+React.memo is a higher-order component that memoizes a component, preventing re-renders if props haven't changed.
 
 ```jsx
 const MemoizedComponent = React.memo(Component);
@@ -20,7 +20,7 @@ const MemoizedComponent = React.memo(Component);
 
 ---
 
-## 💻 Basic Examples
+## 💻 Basic Usage
 
 ### Example 1: Without React.memo
 
@@ -35,27 +35,24 @@ function Parent() {
     <div>
       <button onClick={() => setCount(count + 1)}>Count: {count}</button>
       <input value={name} onChange={e => setName(e.target.value)} />
-      <Child name={name} />
+      
+      {/* ❌ Child re-renders even when its props don't change */}
+      <Child name="Alice" />
     </div>
   );
 }
 
 function Child({ name }) {
-  console.log('Child rendered'); // Renders even when only count changes!
-  return <div>Hello {name}</div>;
+  console.log('Child rendered');
+  return <h1>Hello {name}</h1>;
 }
-```
 
-**Problem:** Child re-renders when count changes, even though its props didn't change.
+// Result: Child renders every time Parent renders
+```
 
 ### Example 2: With React.memo
 
 ```jsx
-const MemoizedChild = React.memo(function Child({ name }) {
-  console.log('Child rendered'); // Only renders when name changes
-  return <div>Hello {name}</div>;
-});
-
 function Parent() {
   const [count, setCount] = useState(0);
   const [name, setName] = useState('John');
@@ -63,200 +60,254 @@ function Parent() {
   return (
     <div>
       <button onClick={() => setCount(count + 1)}>Count: {count}</button>
-      <MemoizedChild name={name} />
+      <input value={name} onChange={e => setName(e.target.value)} />
+      
+      {/* ✅ Child only re-renders when name prop changes */}
+      <MemoizedChild name="Alice" />
     </div>
   );
 }
+
+const MemoizedChild = React.memo(function Child({ name }) {
+  console.log('Child rendered');
+  return <h1>Hello {name}</h1>;
+});
+
+// Result: Child only renders once (props never change)
 ```
 
 ---
 
-## 🎯 Custom Comparison Function
+## 🔄 Custom Comparison Function
 
-### Example 3: Custom areEqual
+### Default Behavior (Shallow Comparison)
 
 ```jsx
-function User({ user, lastUpdated }) {
-  return (
-    <div>
-      <h3>{user.name}</h3>
-      <p>{user.email}</p>
-      <small>Updated: {lastUpdated}</small>
-    </div>
-  );
-}
+const MemoizedComponent = React.memo(Component);
+// Equivalent to:
+// if (prevProps === nextProps) skip render
+```
 
-// Only re-render if user.id changed
+### Custom Comparison
+
+```jsx
 const MemoizedUser = React.memo(
-  User,
+  function User({ user }) {
+    return (
+      <div>
+        <h2>{user.name}</h2>
+        <p>{user.email}</p>
+      </div>
+    );
+  },
   (prevProps, nextProps) => {
-    // Return true if props are equal (skip render)
+    // Return true to SKIP re-render
+    // Return false to re-render
     return prevProps.user.id === nextProps.user.id;
   }
 );
 
 // Usage
-function UserList() {
-  const [users, setUsers] = useState([]);
-  const [lastUpdated, setLastUpdated] = useState(Date.now());
+function App() {
+  const [user, setUser] = useState({ id: 1, name: 'John', lastSeen: Date.now() });
 
-  return (
-    <div>
-      {users.map(user => (
-        <MemoizedUser 
-          key={user.id} 
-          user={user} 
-          lastUpdated={lastUpdated} // Changes don't trigger re-render!
-        />
-      ))}
-    </div>
-  );
+  useEffect(() => {
+    // Update lastSeen every second
+    const interval = setInterval(() => {
+      setUser(prev => ({ ...prev, lastSeen: Date.now() }));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // User component won't re-render because ID hasn't changed
+  return <MemoizedUser user={user} />;
 }
 ```
 
 ---
 
-## ⚡ Combining with Hooks
+## 💪 Real-World Examples
 
-### Example 4: React.memo + useCallback
+### Example 1: Expensive List Item
 
 ```jsx
-import { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 
 function TodoList() {
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = useState([
+    { id: 1, text: 'Learn React', completed: false },
+    { id: 2, text: 'Build app', completed: false },
+    { id: 3, text: 'Deploy', completed: false }
+  ]);
   const [filter, setFilter] = useState('all');
 
-  // ✅ Memoize callback
-  const toggleTodo = useCallback((id) => {
-    setTodos(prev => 
-      prev.map(todo => 
-        todo.id === id ? { ...todo, done: !todo.done } : todo
-      )
-    );
-  }, []);
-
-  const deleteTodo = useCallback((id) => {
-    setTodos(prev => prev.filter(todo => todo.id !== id));
-  }, []);
+  const toggleTodo = (id) => {
+    setTodos(todos.map(todo =>
+      todo.id === id ? { ...todo, completed: !todo.completed } : todo
+    ));
+  };
 
   return (
     <div>
-      <FilterButtons filter={filter} setFilter={setFilter} />
+      <button onClick={() => setFilter('all')}>All</button>
+      <button onClick={() => setFilter('active')}>Active</button>
+      
       {todos.map(todo => (
-        <MemoizedTodoItem
+        <TodoItem
           key={todo.id}
           todo={todo}
           onToggle={toggleTodo}
-          onDelete={deleteTodo}
         />
       ))}
     </div>
   );
 }
 
-// ✅ Memoize component
-const MemoizedTodoItem = React.memo(function TodoItem({ todo, onToggle, onDelete }) {
-  console.log('TodoItem rendered:', todo.id);
+// ✅ Only re-renders when todo or onToggle changes
+const TodoItem = React.memo(function TodoItem({ todo, onToggle }) {
+  console.log(`Rendering todo ${todo.id}`);
   
   return (
     <div>
       <input
         type="checkbox"
-        checked={todo.done}
+        checked={todo.completed}
         onChange={() => onToggle(todo.id)}
       />
-      <span>{todo.text}</span>
-      <button onClick={() => onDelete(todo.id)}>Delete</button>
+      <span style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
+        {todo.text}
+      </span>
     </div>
   );
 });
 ```
 
-### Example 5: React.memo + useMemo
+### Example 2: Heavy Computation Component
 
 ```jsx
-import { useMemo } from 'react';
+import React from 'react';
 
-function ProductList({ products, category }) {
-  // ✅ Memoize filtered data
-  const filteredProducts = useMemo(
-    () => products.filter(p => p.category === category),
-    [products, category]
+const ExpensiveChart = React.memo(function ExpensiveChart({ data }) {
+  console.log('Rendering chart with', data.length, 'points');
+  
+  // Expensive calculation
+  const processedData = data.map(point => ({
+    ...point,
+    normalized: point.value / Math.max(...data.map(p => p.value))
+  }));
+
+  return (
+    <div className="chart">
+      {processedData.map((point, i) => (
+        <div
+          key={i}
+          className="bar"
+          style={{ height: `${point.normalized * 100}%` }}
+        />
+      ))}
+    </div>
   );
+}, (prevProps, nextProps) => {
+  // Custom comparison - only re-render if data length or values changed
+  if (prevProps.data.length !== nextProps.data.length) return false;
+  
+  return prevProps.data.every((point, i) => 
+    point.value === nextProps.data[i].value
+  );
+});
+```
+
+### Example 3: With useCallback
+
+```jsx
+import React, { useState, useCallback } from 'react';
+
+function Parent() {
+  const [count, setCount] = useState(0);
+  const [items, setItems] = useState([]);
+
+  // ✅ Memoized callback - same function reference
+  const handleAddItem = useCallback((item) => {
+    setItems(prev => [...prev, item]);
+  }, []);
 
   return (
     <div>
-      {filteredProducts.map(product => (
-        <MemoizedProductCard key={product.id} product={product} />
-      ))}
+      <button onClick={() => setCount(count + 1)}>Count: {count}</button>
+      
+      {/* ✅ Won't re-render when count changes */}
+      <AddItemForm onAdd={handleAddItem} />
     </div>
   );
 }
 
-// ✅ Memoize component
-const MemoizedProductCard = React.memo(function ProductCard({ product }) {
-  // ✅ Memoize expensive calculation
-  const discount = useMemo(
-    () => calculateDiscount(product),
-    [product]
-  );
+const AddItemForm = React.memo(function AddItemForm({ onAdd }) {
+  const [text, setText] = useState('');
+  
+  console.log('AddItemForm rendered');
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onAdd(text);
+    setText('');
+  };
 
   return (
-    <div>
-      <h3>{product.name}</h3>
-      <p>${product.price}</p>
-      {discount > 0 && <span>Save {discount}%</span>}
-    </div>
+    <form onSubmit={handleSubmit}>
+      <input value={text} onChange={e => setText(e.target.value)} />
+      <button type="submit">Add</button>
+    </form>
   );
 });
 ```
 
 ---
 
-## ⚠️ Common Mistakes
+## ⚠️ When NOT to Use React.memo
 
-### ❌ Mistake 1: Inline Objects
-
-```jsx
-// ❌ Wrong - new object on every render
-function Parent() {
-  return <MemoizedChild user={{ name: 'John', age: 25 }} />;
-}
-
-// ✅ Correct - memoize object
-function Parent() {
-  const user = useMemo(() => ({ name: 'John', age: 25 }), []);
-  return <MemoizedChild user={user} />;
-}
-```
-
-### ❌ Mistake 2: Inline Functions
+### ❌ Mistake 1: Memoizing Everything
 
 ```jsx
-// ❌ Wrong - new function on every render
-function Parent() {
-  return <MemoizedChild onClick={() => console.log('click')} />;
-}
+// ❌ Don't memoize simple components
+const Button = React.memo(({ label }) => <button>{label}</button>);
 
-// ✅ Correct - memoize function
-function Parent() {
-  const handleClick = useCallback(() => console.log('click'), []);
-  return <MemoizedChild onClick={handleClick} />;
-}
-```
-
-### ❌ Mistake 3: Overusing React.memo
-
-```jsx
-// ❌ Unnecessary - simple component, rarely re-renders
-const MemoizedButton = React.memo(function Button({ label }) {
-  return <button>{label}</button>;
-});
-
-// ✅ Better - direct component
+// ✅ Just use regular component
 function Button({ label }) {
   return <button>{label}</button>;
+}
+```
+
+### ❌ Mistake 2: Props Always Change
+
+```jsx
+// ❌ Useless - object/array created on every render
+function Parent() {
+  return <Child data={{ name: 'John' }} />;
+}
+
+const Child = React.memo(({ data }) => <div>{data.name}</div>);
+
+// ✅ Memoize the prop
+function Parent() {
+  const data = useMemo(() => ({ name: 'John' }), []);
+  return <Child data={data} />;
+}
+```
+
+### ❌ Mistake 3: Function Props Not Memoized
+
+```jsx
+// ❌ New function on every render
+function Parent() {
+  return <Child onClick={() => console.log('clicked')} />;
+}
+
+const Child = React.memo(({ onClick }) => <button onClick={onClick}>Click</button>);
+
+// ✅ Memoize the function
+function Parent() {
+  const handleClick = useCallback(() => console.log('clicked'), []);
+  return <Child onClick={handleClick} />;
 }
 ```
 
@@ -265,95 +316,87 @@ function Button({ label }) {
 ## 📊 Performance Comparison
 
 ```jsx
-import { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 
 function PerformanceDemo() {
   const [count, setCount] = useState(0);
-  const renderCount = useRef({ regular: 0, memoized: 0 });
+  const renderCount = useRef(0);
+  const memoRenderCount = useRef(0);
 
   return (
     <div>
-      <button onClick={() => setCount(count + 1)}>Re-render Parent</button>
-      <p>Parent renders: {count}</p>
-      
-      <h3>Regular Component</h3>
-      <RegularChild renderCount={renderCount} type="regular" />
-      
-      <h3>Memoized Component</h3>
-      <MemoizedChild renderCount={renderCount} type="memoized" />
+      <button onClick={() => setCount(count + 1)}>
+        Force Re-render ({count})
+      </button>
+
+      <RegularChild renderCount={renderCount} />
+      <MemoizedChild renderCount={memoRenderCount} />
     </div>
   );
 }
 
-function RegularChild({ renderCount, type }) {
-  renderCount.current[type]++;
-  return <p>Renders: {renderCount.current[type]}</p>;
+function RegularChild({ renderCount }) {
+  renderCount.current++;
+  return <div>Regular: Rendered {renderCount.current} times</div>;
 }
 
-const MemoizedChild = React.memo(RegularChild);
+const MemoizedChild = React.memo(function MemoizedChild({ renderCount }) {
+  renderCount.current++;
+  return <div>Memoized: Rendered {renderCount.current} times</div>;
+});
+
+// Result after 10 parent renders:
+// Regular: Rendered 10 times
+// Memoized: Rendered 1 time
 ```
-
-**Result:** Memoized component renders once, regular renders every time.
-
----
-
-## 🎯 When to Use React.memo
-
-### ✅ Good Use Cases
-
-1. **Expensive components** (complex calculations, many children)
-2. **Components that render often** with same props
-3. **List items** in large lists
-4. **Pure components** (output depends only on props)
-
-### ❌ Avoid When
-
-1. **Props change frequently**
-2. **Simple components** (overhead > benefit)
-3. **Already optimized** parent
-4. **Premature optimization**
 
 ---
 
 ## 🏋️ Exercises
 
-### Exercise 1: Optimize List
-Optimize a list of 1000 items.
+### Exercise 1: Optimize Product List
+
+```jsx
+function ProductList({ products, onAddToCart }) {
+  return (
+    <div>
+      {products.map(product => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          onAddToCart={onAddToCart}
+        />
+      ))}
+    </div>
+  );
+}
+
+// TODO: Optimize ProductCard to prevent unnecessary re-renders
+```
+
+### Exercise 2: Complex Form
+
+Optimize a multi-step form with React.memo.
 
 **Requirements:**
-- Use React.memo
-- Memoize callbacks
-- Measure render count
-- Compare performance
-
-### Exercise 2: Dashboard Widgets
-Optimize dashboard with multiple widgets.
-
-**Requirements:**
-- Independent widget updates
-- Memoize expensive calculations
-- Prevent cascade re-renders
-
-### Exercise 3: Form Fields
-Optimize form with many fields.
-
-**Requirements:**
-- Field-level memoization
-- Optimize validation
-- Track render counts
+- 3 steps with different fields
+- Only active step should re-render
+- Navigation buttons memoized
 
 ---
 
-## 📚 Key Takeaways
+## 🎓 Quiz
 
-1. React.memo prevents re-renders when props are equal
-2. Use with useCallback/useMemo for best results
-3. Custom comparison for complex props
-4. Don't overuse - measure first!
-5. Shallow comparison by default
+1. What does React.memo do?
+2. When should you use a custom comparison function?
+3. Does React.memo work with hooks?
+4. What's the difference from useMemo?
+5. Can you memo a component with children?
+
+**[View Solutions](./solutions/README.md)**
 
 ---
 
-## ➡️ Next Module
+## ⏭️ Next Module
 
 [useRef - References Hook →](../07-useRef/README.md)
