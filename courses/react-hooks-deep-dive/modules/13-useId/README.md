@@ -1,123 +1,109 @@
-# Module 13: useId - Unique IDs Hook
+# Module 13: useId - Unique Identifiers
 
 ## 🎯 Learning Objectives
 
-- ✅ Understand useId
+- ✅ Understand useId hook
 - ✅ Generate unique IDs
-- ✅ Fix accessibility issues
-- ✅ Handle SSR properly
-- ✅ Use in forms and labels
+- ✅ Solve SSR hydration issues
+- ✅ Use with accessibility
+- ✅ Avoid common mistakes
 
 ---
 
 ## 📖 What is useId?
 
-Generates unique IDs that are stable across server and client renders.
+Generates unique, stable IDs for accessibility attributes that work with server-side rendering.
 
 ```jsx
 const id = useId();
 ```
 
-**Why not just use Math.random()?**
-- ❌ Different IDs on server vs client (hydration mismatch)
-- ❌ Not deterministic
-- ✅ useId is stable and SSR-safe
+**Benefits:**
+- ✅ Stable across server/client
+- ✅ No hydration mismatches
+- ✅ Unique per component instance
+- ✅ Works with concurrent features
 
 ---
 
 ## 💻 Basic Usage
 
-### Form Labels
+### Problem: Manual IDs
 
 ```jsx
-import { useId } from 'react';
+// ❌ Problems:
+// 1. Not unique if component used twice
+// 2. SSR/Client mismatch
+// 3. Manual management
 
-function TextField({ label, type = 'text' }) {
-  const id = useId();
-
+function Form() {
   return (
     <div>
-      <label htmlFor={id}>{label}</label>
-      <input id={id} type={type} />
+      <label htmlFor="email">Email</label>
+      <input id="email" />
     </div>
   );
 }
 
-// Usage
-function Form() {
-  return (
-    <form>
-      <TextField label="Name" />
-      <TextField label="Email" type="email" />
-      <TextField label="Password" type="password" />
-    </form>
-  );
-}
-
-// Generated IDs:
-// :r0: (Name)
-// :r1: (Email)
-// :r2: (Password)
+// Used twice = duplicate IDs!
+<Form />
+<Form />
 ```
 
-### Aria Attributes
+### Solution: useId
 
 ```jsx
 import { useId } from 'react';
 
-function Tooltip({ children, text }) {
+function Form() {
   const id = useId();
 
   return (
-    <>
-      <button aria-describedby={id}>
-        {children}
-      </button>
-      <div role="tooltip" id={id}>
-        {text}
-      </div>
-    </>
+    <div>
+      <label htmlFor={id}>Email</label>
+      <input id={id} />
+    </div>
   );
 }
+
+// ✅ Each instance gets unique ID
+<Form /> // id: ":r1:"
+<Form /> // id: ":r2:"
 ```
 
 ---
 
-## 🎨 Real-World Examples
+## 🎨 Accessibility Examples
 
-### Example 1: Accessible Form Field
+### Example 1: Form Fields
 
 ```jsx
 import { useId } from 'react';
 
-function FormField({ label, error, helperText, ...inputProps }) {
+function TextField({ label, type = 'text', ...props }) {
   const id = useId();
   const errorId = `${id}-error`;
-  const helperId = `${id}-helper`;
+  const hintId = `${id}-hint`;
 
   return (
-    <div className="form-field">
+    <div>
       <label htmlFor={id}>{label}</label>
       
       <input
         id={id}
-        aria-invalid={!!error}
-        aria-describedby={
-          error ? errorId : helperText ? helperId : undefined
-        }
-        {...inputProps}
+        type={type}
+        aria-describedby={`${hintId} ${errorId}`}
+        {...props}
       />
       
-      {error && (
-        <span id={errorId} className="error" role="alert">
-          {error}
-        </span>
-      )}
+      <div id={hintId} className="hint">
+        Enter your {label.toLowerCase()}
+      </div>
       
-      {helperText && !error && (
-        <span id={helperId} className="helper-text">
-          {helperText}
-        </span>
+      {props.error && (
+        <div id={errorId} className="error" role="alert">
+          {props.error}
+        </div>
       )}
     </div>
   );
@@ -127,22 +113,14 @@ function FormField({ label, error, helperText, ...inputProps }) {
 function LoginForm() {
   return (
     <form>
-      <FormField
-        label="Email"
-        type="email"
-        helperText="We'll never share your email"
-      />
-      <FormField
-        label="Password"
-        type="password"
-        error="Password must be at least 8 characters"
-      />
+      <TextField label="Email" type="email" />
+      <TextField label="Password" type="password" />
     </form>
   );
 }
 ```
 
-### Example 2: Radio Group
+### Example 2: Radio Groups
 
 ```jsx
 import { useId } from 'react';
@@ -153,8 +131,10 @@ function RadioGroup({ label, options, value, onChange }) {
   return (
     <fieldset>
       <legend>{label}</legend>
+      
       {options.map((option, index) => {
         const id = `${groupId}-${index}`;
+        
         return (
           <div key={option.value}>
             <input
@@ -175,69 +155,75 @@ function RadioGroup({ label, options, value, onChange }) {
 
 // Usage
 function Survey() {
-  const [satisfaction, setSatisfaction] = useState('');
+  const [size, setSize] = useState('medium');
 
   return (
     <RadioGroup
-      label="How satisfied are you?"
-      value={satisfaction}
-      onChange={setSatisfaction}
+      label="Select size"
       options={[
-        { value: '1', label: 'Very Unsatisfied' },
-        { value: '2', label: 'Unsatisfied' },
-        { value: '3', label: 'Neutral' },
-        { value: '4', label: 'Satisfied' },
-        { value: '5', label: 'Very Satisfied' }
+        { value: 'small', label: 'Small' },
+        { value: 'medium', label: 'Medium' },
+        { value: 'large', label: 'Large' }
       ]}
+      value={size}
+      onChange={setSize}
     />
   );
 }
 ```
 
-### Example 3: Accordion with ARIA
+### Example 3: Combobox (Autocomplete)
 
 ```jsx
-import { useState, useId } from 'react';
+import { useId, useState } from 'react';
 
-function AccordionItem({ title, children }) {
+function Combobox({ label, options }) {
   const [isOpen, setIsOpen] = useState(false);
-  const id = useId();
-  const headerId = `${id}-header`;
-  const panelId = `${id}-panel`;
+  const [selected, setSelected] = useState('');
+  
+  const comboboxId = useId();
+  const listboxId = `${comboboxId}-listbox`;
 
-  return (
-    <div className="accordion-item">
-      <button
-        id={headerId}
-        aria-expanded={isOpen}
-        aria-controls={panelId}
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {title}
-      </button>
-      
-      {isOpen && (
-        <div
-          id={panelId}
-          role="region"
-          aria-labelledby={headerId}
-        >
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FAQ() {
   return (
     <div>
-      <AccordionItem title="What is React?">
-        React is a JavaScript library for building user interfaces.
-      </AccordionItem>
-      <AccordionItem title="What is useId?">
-        useId generates unique IDs for accessibility.
-      </AccordionItem>
+      <label id={`${comboboxId}-label`} htmlFor={comboboxId}>
+        {label}
+      </label>
+      
+      <input
+        id={comboboxId}
+        role="combobox"
+        aria-expanded={isOpen}
+        aria-controls={listboxId}
+        aria-labelledby={`${comboboxId}-label`}
+        value={selected}
+        onChange={(e) => setSelected(e.target.value)}
+        onFocus={() => setIsOpen(true)}
+      />
+      
+      {isOpen && (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-labelledby={`${comboboxId}-label`}
+        >
+          {options
+            .filter(opt => opt.toLowerCase().includes(selected.toLowerCase()))
+            .map((option, i) => (
+              <li
+                key={option}
+                id={`${listboxId}-option-${i}`}
+                role="option"
+                onClick={() => {
+                  setSelected(option);
+                  setIsOpen(false);
+                }}
+              >
+                {option}
+              </li>
+            ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -245,47 +231,145 @@ function FAQ() {
 
 ---
 
-## ⚠️ Common Mistakes
-
-### ❌ Mistake 1: Using for Keys
+## 🌐 SSR Example
 
 ```jsx
-// ❌ Wrong - useId is NOT for list keys
+import { useId } from 'react';
+
+function NewsletterForm() {
+  const id = useId();
+
+  return (
+    <form>
+      <label htmlFor={id}>Subscribe to newsletter</label>
+      <input id={id} type="email" />
+    </form>
+  );
+}
+
+// Server renders:
+// <label for=":r1:">...</label>
+// <input id=":r1:" />
+
+// Client hydrates with SAME IDs:
+// <label for=":r1:">...</label>
+// <input id=":r1:" />
+
+// ✅ No hydration mismatch!
+```
+
+---
+
+## ⚠️ Common Mistakes
+
+### ❌ Don't Use for Keys
+
+```jsx
+// ❌ Wrong - IDs change between renders in some cases
 function List({ items }) {
-  return items.map(item => {
-    const id = useId(); // New ID on every render!
-    return <li key={id}>{item}</li>;
-  });
+  const id = useId();
+  
+  return (
+    <ul>
+      {items.map((item, i) => (
+        <li key={`${id}-${i}`}>{item}</li>
+      ))}
+    </ul>
+  );
 }
 
 // ✅ Correct - use stable keys
 function List({ items }) {
-  return items.map(item => (
-    <li key={item.id}>{item.name}</li>
-  ));
+  return (
+    <ul>
+      {items.map(item => (
+        <li key={item.id}>{item.name}</li>
+      ))}
+    </ul>
+  );
 }
 ```
 
-### ❌ Mistake 2: Generating Multiple IDs
+### ❌ Don't Use for Data IDs
 
 ```jsx
-// ❌ Wrong - calling useId multiple times
-function Form() {
-  const nameId = useId();
-  const emailId = useId();
-  const phoneId = useId();
-  // ...
+// ❌ Wrong - not for database IDs
+function createUser() {
+  const id = useId();
+  
+  saveToDatabase({
+    id: id, // Don't use for data!
+    name: 'John'
+  });
 }
 
-// ✅ Correct - use one ID as base
-function Form() {
-  const id = useId();
+// ✅ Correct - generate on server
+function createUser() {
+  saveToDatabase({
+    id: crypto.randomUUID(), // Or let DB generate
+    name: 'John'
+  });
+}
+```
+
+---
+
+## 💡 Advanced Patterns
+
+### Pattern 1: Prefix for Multiple IDs
+
+```jsx
+function FormField({ label }) {
+  const baseId = useId();
+  const inputId = `${baseId}-input`;
+  const errorId = `${baseId}-error`;
+  const hintId = `${baseId}-hint`;
+
   return (
-    <>
-      <input id={`${id}-name`} />
-      <input id={`${id}-email`} />
-      <input id={`${id}-phone`} />
-    </>
+    <div>
+      <label htmlFor={inputId}>{label}</label>
+      <input id={inputId} aria-describedby={`${hintId} ${errorId}`} />
+      <div id={hintId}>Hint text</div>
+      <div id={errorId}>Error text</div>
+    </div>
+  );
+}
+```
+
+### Pattern 2: Custom Hook
+
+```jsx
+import { useId } from 'react';
+
+function useFormField(name) {
+  const id = useId();
+  
+  return {
+    fieldId: id,
+    labelId: `${id}-label`,
+    errorId: `${id}-error`,
+    hintId: `${id}-hint`,
+    name
+  };
+}
+
+// Usage
+function FormField({ label, name }) {
+  const ids = useFormField(name);
+  
+  return (
+    <div>
+      <label id={ids.labelId} htmlFor={ids.fieldId}>
+        {label}
+      </label>
+      <input
+        id={ids.fieldId}
+        name={ids.name}
+        aria-labelledby={ids.labelId}
+        aria-describedby={ids.hintId}
+      />
+      <div id={ids.hintId}>Helper text</div>
+    </div>
   );
 }
 ```
@@ -294,37 +378,28 @@ function Form() {
 
 ## 🏋️ Exercises
 
-### Exercise 1: Accessible Select
+### Exercise 1: Accessible Tabs
 
-Create a custom select with proper ARIA.
-
-**Requirements:**
-- Label association
-- Error messages
-- Helper text
-- Keyboard navigation
-
-### Exercise 2: Tabs Component
-
-Build accessible tabs.
+Create tabs with proper ARIA attributes.
 
 **Requirements:**
-- Tab panel association
-- ARIA attributes
-- Keyboard support
-- Multiple instances
+- Use useId for all IDs
+- aria-controls
+- aria-labelledby
+- role="tablist", "tab", "tabpanel"
+
+### Exercise 2: Modal Dialog
+
+Build accessible modal.
+
+**Requirements:**
+- aria-labelledby
+- aria-describedby
+- Focus management
+- Unique IDs per modal instance
 
 ---
 
-## 📚 Best Practices
-
-1. **Use for accessibility** - Labels, ARIA attributes
-2. **Prefix for related IDs** - `${id}-error`, `${id}-helper`
-3. **One per component** - Generate once, reuse
-4. **Not for list keys** - Keys should be stable
-
----
-
-## ⏭️ Next Module
+## ➡️ Next Module
 
 [useSyncExternalStore - External State →](../14-useSyncExternalStore/README.md)

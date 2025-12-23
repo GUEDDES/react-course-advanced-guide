@@ -1,73 +1,76 @@
-# Module 14: useSyncExternalStore - External State Sync
+# Module 14: useSyncExternalStore - External State
 
 ## 🎯 Learning Objectives
 
-- ✅ Understand external stores
-- ✅ Subscribe to external state
-- ✅ Handle concurrent rendering
+- ✅ Sync with external stores
+- ✅ Handle subscriptions safely
+- ✅ Support concurrent rendering
+- ✅ Avoid tearing issues
 - ✅ Build custom stores
-- ✅ Integrate third-party stores
 
 ---
 
 ## 📖 What is useSyncExternalStore?
 
-Subscribes to external data stores in a way that's safe for concurrent rendering.
+Subscribes to external stores in a way that's safe for concurrent rendering.
 
 ```jsx
 const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot?);
 ```
 
 **Parameters:**
-- `subscribe`: Function to subscribe to the store
-- `getSnapshot`: Returns current snapshot of data
-- `getServerSnapshot`: (Optional) Returns server snapshot
+- `subscribe`: Function to subscribe to store
+- `getSnapshot`: Returns current store value
+- `getServerSnapshot`: (Optional) Returns server snapshot for SSR
 
 ---
 
 ## 💻 Basic Example
 
-### Simple Store
+### Creating a Store
 
 ```jsx
-import { useSyncExternalStore } from 'react';
-
-// External store
-let count = 0;
+// store.js
 let listeners = [];
+let state = { count: 0 };
 
-const store = {
+export const store = {
+  getState() {
+    return state;
+  },
+  
+  setState(newState) {
+    state = { ...state, ...newState };
+    listeners.forEach(listener => listener());
+  },
+  
   subscribe(listener) {
     listeners.push(listener);
     return () => {
       listeners = listeners.filter(l => l !== listener);
     };
-  },
-  getSnapshot() {
-    return count;
-  },
-  increment() {
-    count++;
-    listeners.forEach(l => l());
-  },
-  decrement() {
-    count--;
-    listeners.forEach(l => l());
   }
 };
+```
 
-// Component
+### Using the Store
+
+```jsx
+import { useSyncExternalStore } from 'react';
+import { store } from './store';
+
 function Counter() {
-  const count = useSyncExternalStore(
+  const state = useSyncExternalStore(
     store.subscribe,
-    store.getSnapshot
+    () => store.getState()
   );
 
   return (
     <div>
-      <p>Count: {count}</p>
-      <button onClick={store.increment}>+</button>
-      <button onClick={store.decrement}>-</button>
+      <p>Count: {state.count}</p>
+      <button onClick={() => store.setState({ count: state.count + 1 })}>
+        Increment
+      </button>
     </div>
   );
 }
@@ -75,9 +78,52 @@ function Counter() {
 
 ---
 
-## 🎨 Real-World Examples
+## 🎯 Real-World Examples
 
-### Example 1: Window Dimensions
+### Example 1: Online Status
+
+```jsx
+import { useSyncExternalStore } from 'react';
+
+function subscribe(callback) {
+  window.addEventListener('online', callback);
+  window.addEventListener('offline', callback);
+  
+  return () => {
+    window.removeEventListener('online', callback);
+    window.removeEventListener('offline', callback);
+  };
+}
+
+function getSnapshot() {
+  return navigator.onLine;
+}
+
+function getServerSnapshot() {
+  return true; // Assume online on server
+}
+
+function useOnlineStatus() {
+  return useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot
+  );
+}
+
+// Usage
+function StatusIndicator() {
+  const isOnline = useOnlineStatus();
+  
+  return (
+    <div className={isOnline ? 'online' : 'offline'}>
+      {isOnline ? '🟢 Online' : '🔴 Offline'}
+    </div>
+  );
+}
+```
+
+### Example 2: Window Dimensions
 
 ```jsx
 import { useSyncExternalStore } from 'react';
@@ -107,197 +153,63 @@ function useWindowSize() {
 }
 
 // Usage
-function App() {
-  const { width, height } = useWindowSize();
-
+function ResponsiveComponent() {
+  const { width } = useWindowSize();
+  
   return (
     <div>
-      <p>Window size: {width} x {height}</p>
-      {width < 768 ? <MobileView /> : <DesktopView />}
+      {width < 768 ? (
+        <MobileView />
+      ) : (
+        <DesktopView />
+      )}
     </div>
   );
 }
 ```
 
-### Example 2: Online Status
+### Example 3: Local Storage Sync
 
 ```jsx
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore, useCallback } from 'react';
 
-function subscribe(callback) {
-  window.addEventListener('online', callback);
-  window.addEventListener('offline', callback);
-  return () => {
-    window.removeEventListener('online', callback);
-    window.removeEventListener('offline', callback);
+function useLocalStorage(key, initialValue) {
+  const subscribe = useCallback((callback) => {
+    const handler = (e) => {
+      if (e.key === key) {
+        callback();
+      }
+    };
+    
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
+  }, [key]);
+
+  const getSnapshot = () => {
+    const value = localStorage.getItem(key);
+    return value ? JSON.parse(value) : initialValue;
   };
-}
 
-function getSnapshot() {
-  return navigator.onLine;
-}
+  const getServerSnapshot = () => initialValue;
 
-function getServerSnapshot() {
-  return true; // Assume online on server
-}
-
-function useOnlineStatus() {
-  return useSyncExternalStore(
+  const state = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot
   );
+
+  const setState = (newValue) => {
+    localStorage.setItem(key, JSON.stringify(newValue));
+    // Trigger storage event for same-tab updates
+    window.dispatchEvent(new StorageEvent('storage', { key }));
+  };
+
+  return [state, setState];
 }
 
 // Usage
-function StatusIndicator() {
-  const isOnline = useOnlineStatus();
-
-  return (
-    <div className={isOnline ? 'online' : 'offline'}>
-      {isOnline ? '🟢 Online' : '🔴 Offline'}
-    </div>
-  );
-}
-```
-
-### Example 3: Custom Store
-
-```jsx
-import { useSyncExternalStore } from 'react';
-
-class TodoStore {
-  constructor() {
-    this.todos = [];
-    this.listeners = new Set();
-  }
-
-  subscribe = (listener) => {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  };
-
-  getSnapshot = () => {
-    return this.todos;
-  };
-
-  addTodo(text) {
-    this.todos = [...this.todos, { id: Date.now(), text, completed: false }];
-    this.notifyListeners();
-  }
-
-  toggleTodo(id) {
-    this.todos = this.todos.map(todo =>
-      todo.id === id ? { ...todo, completed: !todo.completed } : todo
-    );
-    this.notifyListeners();
-  }
-
-  deleteTodo(id) {
-    this.todos = this.todos.filter(todo => todo.id !== id);
-    this.notifyListeners();
-  }
-
-  notifyListeners() {
-    this.listeners.forEach(listener => listener());
-  }
-}
-
-const todoStore = new TodoStore();
-
-function useTodos() {
-  return useSyncExternalStore(
-    todoStore.subscribe,
-    todoStore.getSnapshot
-  );
-}
-
-// Usage
-function TodoApp() {
-  const todos = useTodos();
-  const [input, setInput] = useState('');
-
-  const handleAdd = () => {
-    if (input.trim()) {
-      todoStore.addTodo(input);
-      setInput('');
-    }
-  };
-
-  return (
-    <div>
-      <input value={input} onChange={e => setInput(e.target.value)} />
-      <button onClick={handleAdd}>Add</button>
-
-      <ul>
-        {todos.map(todo => (
-          <li key={todo.id}>
-            <input
-              type="checkbox"
-              checked={todo.completed}
-              onChange={() => todoStore.toggleTodo(todo.id)}
-            />
-            {todo.text}
-            <button onClick={() => todoStore.deleteTodo(todo.id)}>Delete</button>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-```
-
-### Example 4: Local Storage Sync
-
-```jsx
-import { useSyncExternalStore } from 'react';
-
-function createLocalStorageStore(key, initialValue) {
-  let listeners = [];
-
-  // Listen to storage events from other tabs
-  window.addEventListener('storage', (e) => {
-    if (e.key === key) {
-      listeners.forEach(l => l());
-    }
-  });
-
-  return {
-    subscribe(listener) {
-      listeners.push(listener);
-      return () => {
-        listeners = listeners.filter(l => l !== listener);
-      };
-    },
-    getSnapshot() {
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : initialValue;
-    },
-    getServerSnapshot() {
-      return initialValue;
-    },
-    setValue(value) {
-      localStorage.setItem(key, JSON.stringify(value));
-      listeners.forEach(l => l());
-    }
-  };
-}
-
-const themeStore = createLocalStorageStore('theme', 'light');
-
-function useTheme() {
-  const theme = useSyncExternalStore(
-    themeStore.subscribe,
-    themeStore.getSnapshot,
-    themeStore.getServerSnapshot
-  );
-
-  return [theme, themeStore.setValue];
-}
-
-// Usage - syncs across tabs!
 function ThemeToggle() {
-  const [theme, setTheme] = useTheme();
+  const [theme, setTheme] = useLocalStorage('theme', 'light');
 
   return (
     <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
@@ -309,40 +221,235 @@ function ThemeToggle() {
 
 ---
 
+## 💪 Advanced Store Example
+
+```jsx
+// createStore.js
+export function createStore(initialState) {
+  let state = initialState;
+  const listeners = new Set();
+
+  return {
+    getState: () => state,
+    
+    setState: (newState) => {
+      state = typeof newState === 'function'
+        ? newState(state)
+        : { ...state, ...newState };
+      listeners.forEach(listener => listener());
+    },
+    
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    }
+  };
+}
+
+// useStore.js
+import { useSyncExternalStore, useCallback } from 'react';
+
+export function useStore(store, selector = (state) => state) {
+  const getSnapshot = useCallback(
+    () => selector(store.getState()),
+    [store, selector]
+  );
+
+  return useSyncExternalStore(
+    store.subscribe,
+    getSnapshot
+  );
+}
+
+// Usage
+import { createStore } from './createStore';
+import { useStore } from './useStore';
+
+const userStore = createStore({
+  user: null,
+  isLoading: false
+});
+
+function UserProfile() {
+  const user = useStore(userStore, state => state.user);
+  const isLoading = useStore(userStore, state => state.isLoading);
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!user) return <div>Not logged in</div>;
+
+  return <div>Welcome, {user.name}!</div>;
+}
+
+function LoginButton() {
+  const login = async () => {
+    userStore.setState({ isLoading: true });
+    const user = await fetchUser();
+    userStore.setState({ user, isLoading: false });
+  };
+
+  return <button onClick={login}>Login</button>;
+}
+```
+
+---
+
+## 🔄 Selector Optimization
+
+```jsx
+import { useSyncExternalStore, useMemo } from 'react';
+
+// ❌ Creates new object every render - causes re-renders
+function BadComponent() {
+  const data = useStore(store, state => ({
+    user: state.user,
+    settings: state.settings
+  }));
+  
+  return <div>{data.user.name}</div>;
+}
+
+// ✅ Stable selector - only re-renders when selected data changes
+function GoodComponent() {
+  const userName = useStore(store, state => state.user.name);
+  
+  return <div>{userName}</div>;
+}
+
+// ✅ Memoized selector for complex transformations
+function OptimizedComponent({ userId }) {
+  const selector = useMemo(
+    () => (state) => state.users.find(u => u.id === userId),
+    [userId]
+  );
+  
+  const user = useStore(store, selector);
+  
+  return <div>{user?.name}</div>;
+}
+```
+
+---
+
+## 🏋️ Complete Example: Todo Store
+
+```jsx
+// todoStore.js
+import { createStore } from './createStore';
+
+export const todoStore = createStore({
+  todos: [],
+  filter: 'all'
+});
+
+export const todoActions = {
+  addTodo: (text) => {
+    todoStore.setState(state => ({
+      todos: [...state.todos, {
+        id: Date.now(),
+        text,
+        completed: false
+      }]
+    }));
+  },
+  
+  toggleTodo: (id) => {
+    todoStore.setState(state => ({
+      todos: state.todos.map(todo =>
+        todo.id === id
+          ? { ...todo, completed: !todo.completed }
+          : todo
+      )
+    }));
+  },
+  
+  setFilter: (filter) => {
+    todoStore.setState({ filter });
+  }
+};
+
+// TodoList.jsx
+import { useStore } from './useStore';
+import { todoStore, todoActions } from './todoStore';
+
+function TodoList() {
+  const todos = useStore(todoStore, state => state.todos);
+  const filter = useStore(todoStore, state => state.filter);
+
+  const filteredTodos = todos.filter(todo => {
+    if (filter === 'active') return !todo.completed;
+    if (filter === 'completed') return todo.completed;
+    return true;
+  });
+
+  return (
+    <div>
+      <FilterButtons />
+      <ul>
+        {filteredTodos.map(todo => (
+          <TodoItem key={todo.id} todo={todo} />
+        ))}
+      </ul>
+      <AddTodoForm />
+    </div>
+  );
+}
+
+function TodoItem({ todo }) {
+  return (
+    <li>
+      <input
+        type="checkbox"
+        checked={todo.completed}
+        onChange={() => todoActions.toggleTodo(todo.id)}
+      />
+      {todo.text}
+    </li>
+  );
+}
+
+function FilterButtons() {
+  const filter = useStore(todoStore, state => state.filter);
+  
+  return (
+    <div>
+      {['all', 'active', 'completed'].map(f => (
+        <button
+          key={f}
+          onClick={() => todoActions.setFilter(f)}
+          disabled={filter === f}
+        >
+          {f}
+        </button>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
 ## 🏋️ Exercises
 
-### Exercise 1: Mouse Position Tracker
-
-Track mouse position globally.
-
-**Requirements:**
-- Subscribe to mousemove
-- Return { x, y }
-- Clean up listeners
-- Handle SSR
-
-### Exercise 2: Media Query Hook
+### Exercise 1: Media Query Hook
 
 Create `useMediaQuery` hook.
 
 **Requirements:**
 - Subscribe to matchMedia
-- Return boolean
-- Support multiple queries
-- SSR-safe
+- Support SSR
+- Handle multiple queries
 
-### Exercise 3: WebSocket Store
+### Exercise 2: Geolocation Store
 
-Build real-time data store.
+Build location tracking store.
 
 **Requirements:**
-- WebSocket connection
-- Auto-reconnect
-- Message handling
-- State synchronization
+- Watch position
+- Handle permissions
+- Error states
 
 ---
 
-## ⏭️ Next Module
+## ➡️ Next Module
 
 [Custom Hooks Advanced →](../15-custom-hooks-advanced/README.md)

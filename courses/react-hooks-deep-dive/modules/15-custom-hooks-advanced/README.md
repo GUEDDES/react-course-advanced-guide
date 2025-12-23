@@ -2,39 +2,42 @@
 
 ## 🎯 Learning Objectives
 
-- ✅ Build complex custom hooks
-- ✅ Compose hooks together
-- ✅ Handle edge cases
-- ✅ Test custom hooks
-- ✅ Create reusable hook libraries
+- ✅ Master advanced custom hooks
+- ✅ Composition patterns
+- ✅ Error handling
+- ✅ TypeScript integration
+- ✅ Testing strategies
 
 ---
 
-## 💻 Advanced Custom Hooks
+## 📖 Advanced Hook Patterns
 
-### 1. useAsync - Async Operations
+### Pattern 1: Compound Hooks
 
 ```jsx
 import { useState, useEffect, useCallback } from 'react';
 
+// Combine multiple concerns
 function useAsync(asyncFunction, immediate = true) {
   const [status, setStatus] = useState('idle');
-  const [value, setValue] = useState(null);
+  const [data, setData] = useState(null);
   const [error, setError] = useState(null);
 
-  const execute = useCallback(() => {
+  const execute = useCallback((...params) => {
     setStatus('pending');
-    setValue(null);
+    setData(null);
     setError(null);
 
-    return asyncFunction()
+    return asyncFunction(...params)
       .then(response => {
-        setValue(response);
+        setData(response);
         setStatus('success');
+        return response;
       })
       .catch(error => {
         setError(error);
         setStatus('error');
+        throw error;
       });
   }, [asyncFunction]);
 
@@ -44,7 +47,16 @@ function useAsync(asyncFunction, immediate = true) {
     }
   }, [execute, immediate]);
 
-  return { execute, status, value, error };
+  return {
+    execute,
+    status,
+    data,
+    error,
+    isIdle: status === 'idle',
+    isPending: status === 'pending',
+    isSuccess: status === 'success',
+    isError: status === 'error'
+  };
 }
 
 // Usage
@@ -54,258 +66,311 @@ function UserProfile({ userId }) {
     [userId]
   );
 
-  const { value: user, status, error, execute: refetch } = useAsync(fetchUser);
+  const { data: user, isPending, isError, error, execute } = useAsync(fetchUser);
 
-  if (status === 'pending') return <div>Loading...</div>;
-  if (status === 'error') return <div>Error: {error.message}</div>;
-  if (status === 'success') return (
-    <div>
-      <h1>{user.name}</h1>
-      <button onClick={refetch}>Refresh</button>
-    </div>
-  );
+  if (isPending) return <div>Loading...</div>;
+  if (isError) return <div>Error: {error.message} <button onClick={execute}>Retry</button></div>;
 
-  return null;
+  return <div>Welcome {user.name}!</div>;
 }
 ```
 
-### 2. useIntersectionObserver - Lazy Loading
+### Pattern 2: State Machine Hook
+
+```jsx
+import { useReducer, useCallback } from 'react';
+
+function useStateMachine(states, initialState) {
+  const [state, dispatch] = useReducer((currentState, action) => {
+    const transitions = states[currentState];
+    return transitions[action] ?? currentState;
+  }, initialState);
+
+  const send = useCallback((action) => {
+    dispatch(action);
+  }, []);
+
+  return [state, send];
+}
+
+// Usage: Form wizard
+function FormWizard() {
+  const [step, send] = useStateMachine({
+    personal: { NEXT: 'address', CANCEL: 'cancelled' },
+    address: { NEXT: 'payment', BACK: 'personal' },
+    payment: { NEXT: 'confirmation', BACK: 'address' },
+    confirmation: { SUBMIT: 'submitted', BACK: 'payment' },
+    submitted: {},
+    cancelled: {}
+  }, 'personal');
+
+  return (
+    <div>
+      {step === 'personal' && <PersonalInfo onNext={() => send('NEXT')} />}
+      {step === 'address' && <AddressInfo onNext={() => send('NEXT')} onBack={() => send('BACK')} />}
+      {step === 'payment' && <PaymentInfo onNext={() => send('NEXT')} onBack={() => send('BACK')} />}
+      {step === 'confirmation' && <Confirmation onSubmit={() => send('SUBMIT')} />}
+      {step === 'submitted' && <Success />}
+    </div>
+  );
+}
+```
+
+### Pattern 3: Retry with Exponential Backoff
+
+```jsx
+import { useState, useCallback, useRef } from 'react';
+
+function useRetry(fn, options = {}) {
+  const {
+    maxRetries = 3,
+    initialDelay = 1000,
+    maxDelay = 10000,
+    backoffFactor = 2
+  } = options;
+
+  const [attempts, setAttempts] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const timeoutRef = useRef();
+
+  const execute = useCallback(async (...args) => {
+    let lastError;
+    
+    for (let i = 0; i <= maxRetries; i++) {
+      try {
+        setAttempts(i);
+        const result = await fn(...args);
+        setIsRetrying(false);
+        return result;
+      } catch (error) {
+        lastError = error;
+        
+        if (i < maxRetries) {
+          const delay = Math.min(
+            initialDelay * Math.pow(backoffFactor, i),
+            maxDelay
+          );
+          
+          setIsRetrying(true);
+          await new Promise(resolve => {
+            timeoutRef.current = setTimeout(resolve, delay);
+          });
+        }
+      }
+    }
+    
+    setIsRetrying(false);
+    throw lastError;
+  }, [fn, maxRetries, initialDelay, maxDelay, backoffFactor]);
+
+  const cancel = useCallback(() => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      setIsRetrying(false);
+    }
+  }, []);
+
+  return { execute, attempts, isRetrying, cancel };
+}
+
+// Usage
+function DataFetcher() {
+  const fetchData = useCallback(
+    () => fetch('/api/data').then(r => r.json()),
+    []
+  );
+
+  const { execute, attempts, isRetrying } = useRetry(fetchData, {
+    maxRetries: 5,
+    initialDelay: 1000
+  });
+
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    execute().then(setData).catch(console.error);
+  }, [execute]);
+
+  if (isRetrying) {
+    return <div>Retrying... (Attempt {attempts + 1})</div>;
+  }
+
+  return <div>{JSON.stringify(data)}</div>;
+}
+```
+
+---
+
+## 🎨 Data Fetching Hooks
+
+### useQuery (React Query-like)
 
 ```jsx
 import { useState, useEffect, useRef } from 'react';
 
-function useIntersectionObserver(options = {}) {
-  const [isIntersecting, setIsIntersecting] = useState(false);
-  const [entry, setEntry] = useState(null);
-  const ref = useRef(null);
+function useQuery(queryKey, queryFn, options = {}) {
+  const { enabled = true, refetchInterval } = options;
+  
+  const [state, setState] = useState({
+    data: null,
+    error: null,
+    isLoading: true,
+    isFetching: false
+  });
+
+  const queryKeyRef = useRef(queryKey);
+  const isMounted = useRef(true);
 
   useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
+    isMounted.current = true;
+    return () => { isMounted.current = false; };
+  }, []);
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsIntersecting(entry.isIntersecting);
-        setEntry(entry);
-      },
-      {
-        threshold: 0,
-        root: null,
-        rootMargin: '0px',
-        ...options
+  const fetchData = async () => {
+    setState(prev => ({ ...prev, isFetching: true }));
+
+    try {
+      const data = await queryFn();
+      
+      if (isMounted.current) {
+        setState({
+          data,
+          error: null,
+          isLoading: false,
+          isFetching: false
+        });
       }
-    );
+    } catch (error) {
+      if (isMounted.current) {
+        setState({
+          data: null,
+          error,
+          isLoading: false,
+          isFetching: false
+        });
+      }
+    }
+  };
 
-    observer.observe(element);
+  useEffect(() => {
+    if (enabled) {
+      fetchData();
+    }
+  }, [queryKey, enabled]);
 
-    return () => observer.disconnect();
-  }, [options.threshold, options.root, options.rootMargin]);
+  useEffect(() => {
+    if (refetchInterval && enabled) {
+      const interval = setInterval(fetchData, refetchInterval);
+      return () => clearInterval(interval);
+    }
+  }, [refetchInterval, enabled]);
 
-  return { ref, isIntersecting, entry };
+  return {
+    ...state,
+    refetch: fetchData
+  };
 }
 
 // Usage
-function LazyImage({ src, alt }) {
-  const { ref, isIntersecting } = useIntersectionObserver({
-    threshold: 0.1
-  });
-  const [imageSrc, setImageSrc] = useState(null);
+function Posts() {
+  const { data, isLoading, error, refetch } = useQuery(
+    ['posts'],
+    () => fetch('/api/posts').then(r => r.json()),
+    { refetchInterval: 30000 }
+  );
 
-  useEffect(() => {
-    if (isIntersecting && !imageSrc) {
-      setImageSrc(src);
-    }
-  }, [isIntersecting, src, imageSrc]);
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <div ref={ref}>
-      {imageSrc ? (
-        <img src={imageSrc} alt={alt} />
-      ) : (
-        <div className="placeholder">Loading...</div>
-      )}
+    <div>
+      <button onClick={refetch}>Refresh</button>
+      {data.map(post => <Post key={post.id} post={post} />)}
     </div>
   );
 }
 ```
 
-### 3. useWebSocket - Real-time Connection
+---
+
+## 🔐 Authentication Hook
 
 ```jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useContext, createContext } from 'react';
 
-function useWebSocket(url) {
-  const [isConnected, setIsConnected] = useState(false);
-  const [lastMessage, setLastMessage] = useState(null);
-  const wsRef = useRef(null);
-  const reconnectTimeoutRef = useRef(null);
+const AuthContext = createContext();
 
-  const connect = useCallback(() => {
-    const ws = new WebSocket(url);
+export function AuthProvider({ children }) {
+  const auth = useProvideAuth();
+  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
+}
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      console.log('WebSocket connected');
-    };
+export function useAuth() {
+  return useContext(AuthContext);
+}
 
-    ws.onmessage = (event) => {
-      setLastMessage(JSON.parse(event.data));
-    };
+function useProvideAuth() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+  const signin = async (email, password) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/signin', {
+        method: 'POST',
+        body: JSON.stringify({ email, password })
+      });
+      const user = await response.json();
+      setUser(user);
+      localStorage.setItem('token', user.token);
+      return user;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      // Auto-reconnect after 5 seconds
-      reconnectTimeoutRef.current = setTimeout(connect, 5000);
-    };
+  const signup = async (email, password, name) => {
+    setLoading(true);
+    try {
+      const response = await fetch('/api/signup', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, name })
+      });
+      const user = await response.json();
+      setUser(user);
+      localStorage.setItem('token', user.token);
+      return user;
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    wsRef.current = ws;
-  }, [url]);
+  const signout = () => {
+    setUser(null);
+    localStorage.removeItem('token');
+  };
 
   useEffect(() => {
-    connect();
-
-    return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-    };
-  }, [connect]);
-
-  const sendMessage = useCallback((message) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+    const token = localStorage.getItem('token');
+    if (token) {
+      fetch('/api/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(setUser)
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
     }
   }, []);
 
-  return { isConnected, lastMessage, sendMessage };
-}
-
-// Usage
-function Chat() {
-  const { isConnected, lastMessage, sendMessage } = useWebSocket('ws://localhost:8080');
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState('');
-
-  useEffect(() => {
-    if (lastMessage) {
-      setMessages(prev => [...prev, lastMessage]);
-    }
-  }, [lastMessage]);
-
-  const handleSend = () => {
-    sendMessage({ text: input, timestamp: Date.now() });
-    setInput('');
+  return {
+    user,
+    loading,
+    signin,
+    signup,
+    signout
   };
-
-  return (
-    <div>
-      <div>{isConnected ? '🟢 Connected' : '🔴 Disconnected'}</div>
-      <div>{messages.map((msg, i) => <div key={i}>{msg.text}</div>)}</div>
-      <input value={input} onChange={e => setInput(e.target.value)} />
-      <button onClick={handleSend} disabled={!isConnected}>Send</button>
-    </div>
-  );
-}
-```
-
-### 4. useClipboard - Copy to Clipboard
-
-```jsx
-import { useState, useCallback } from 'react';
-
-function useClipboard(resetTimeout = 2000) {
-  const [isCopied, setIsCopied] = useState(false);
-  const [error, setError] = useState(null);
-
-  const copy = useCallback(async (text) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setIsCopied(true);
-      setError(null);
-
-      setTimeout(() => setIsCopied(false), resetTimeout);
-    } catch (err) {
-      setError(err);
-      setIsCopied(false);
-    }
-  }, [resetTimeout]);
-
-  return { isCopied, error, copy };
-}
-
-// Usage
-function CodeBlock({ code }) {
-  const { isCopied, copy } = useClipboard();
-
-  return (
-    <div>
-      <pre>{code}</pre>
-      <button onClick={() => copy(code)}>
-        {isCopied ? '✅ Copied!' : '📋 Copy'}
-      </button>
-    </div>
-  );
-}
-```
-
-### 5. useKeyPress - Keyboard Shortcuts
-
-```jsx
-import { useState, useEffect } from 'react';
-
-function useKeyPress(targetKeys, callback) {
-  const [keysPressed, setKeysPressed] = useState(new Set());
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      const newKeys = new Set(keysPressed);
-      newKeys.add(e.key.toLowerCase());
-      setKeysPressed(newKeys);
-
-      const allPressed = targetKeys.every(key => 
-        newKeys.has(key.toLowerCase())
-      );
-
-      if (allPressed) {
-        e.preventDefault();
-        callback?.();
-      }
-    };
-
-    const handleKeyUp = (e) => {
-      const newKeys = new Set(keysPressed);
-      newKeys.delete(e.key.toLowerCase());
-      setKeysPressed(newKeys);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [targetKeys, callback, keysPressed]);
-}
-
-// Usage
-function Editor() {
-  useKeyPress(['Control', 's'], () => {
-    console.log('Save!');
-  });
-
-  useKeyPress(['Control', 'Shift', 'p'], () => {
-    console.log('Command palette!');
-  });
-
-  return <textarea />;
 }
 ```
 
@@ -313,17 +378,32 @@ function Editor() {
 
 ## 🏋️ Final Exercises
 
-### Exercise 1: useGeolocation
-Track user's location.
+### Exercise 1: useInfiniteScroll
 
-### Exercise 2: useNotification
-Browser notifications.
+**Requirements:**
+- Detect scroll position
+- Load more on threshold
+- Loading states
+- Error handling
 
-### Exercise 3: useDarkMode
-Persistent dark mode.
+### Exercise 2: useWebSocket
+
+**Requirements:**
+- Connect/disconnect
+- Send/receive messages
+- Reconnection logic
+- Message queue
+
+### Exercise 3: useUndoRedo
+
+**Requirements:**
+- History management
+- Undo/redo actions
+- Time travel
+- State snapshots
 
 ---
 
-## ⏭️ Next Module
+## ➡️ Next Module
 
 [Final Project →](../16-final-project/README.md)

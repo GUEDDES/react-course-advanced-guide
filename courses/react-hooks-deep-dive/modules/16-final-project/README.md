@@ -1,393 +1,312 @@
-# Module 16: Final Project - Advanced Todo App
+# Module 16: Final Project - Full Stack Task Manager
 
 ## 🎯 Project Overview
 
-Build a production-ready todo application using **all React hooks** learned in this course.
+Build a complete task management application using all hooks learned in this course.
 
-### Features
-
-✅ **Core Features:**
-- Add, edit, delete todos
-- Mark as complete
-- Filter (all/active/completed)
-- Persistent storage
-- Drag and drop reordering
-
-✅ **Advanced Features:**
-- Dark mode with useContext
-- Keyboard shortcuts with custom hooks
-- Optimistic UI updates
-- Undo/redo with useReducer
-- Real-time sync across tabs
-- Performance optimizations
+**Features:**
+- ✅ User authentication
+- ✅ Real-time updates
+- ✅ Drag & drop tasks
+- ✅ Filters and search
+- ✅ Dark mode
+- ✅ Offline support
+- ✅ Performance optimized
 
 ---
 
-## 📁 Project Structure
+## 🏗️ Architecture
 
 ```
-todo-app/
-├── src/
-│   ├── components/
-│   │   ├── TodoList.jsx
-│   │   ├── TodoItem.jsx
-│   │   ├── TodoInput.jsx
-│   │   ├── FilterButtons.jsx
-│   │   └── ThemeToggle.jsx
-│   ├── hooks/
-│   │   ├── useTodos.js
-│   │   ├── useLocalStorage.js
-│   │   ├── useKeyPress.js
-│   │   └── useUndo.js
-│   ├── context/
-│   │   └── ThemeContext.jsx
-│   ├── reducers/
-│   │   └── todoReducer.js
-│   ├── App.jsx
-│   └── main.jsx
-└── package.json
+src/
+├── hooks/
+│   ├── useAuth.js
+│   ├── useTasks.js
+│   ├── useWebSocket.js
+│   ├── useLocalStorage.js
+│   ├── useTheme.js
+│   └── useInfiniteScroll.js
+├── components/
+│   ├── Auth/
+│   ├── TaskList/
+│   ├── TaskItem/
+│   ├── TaskForm/
+│   └── Layout/
+├── contexts/
+│   ├── AuthContext.jsx
+│   ├── TaskContext.jsx
+│   └── ThemeContext.jsx
+├── utils/
+│   ├── api.js
+│   └── storage.js
+└── App.jsx
 ```
 
 ---
 
-## 💻 Implementation
+## 📝 Step-by-Step Implementation
 
-### 1. Todo Reducer
+### Step 1: Authentication System
 
 ```jsx
-// src/reducers/todoReducer.js
-export const initialState = {
-  todos: [],
+// hooks/useAuth.js
+import { useState, useEffect, useCallback } from 'react';
+import { useLocalStorage } from './useLocalStorage';
+
+export function useAuth() {
+  const [user, setUser] = useLocalStorage('user', null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const login = useCallback(async (email, password) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      if (!response.ok) throw new Error('Login failed');
+      
+      const data = await response.json();
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
+
+  const logout = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem('token');
+  }, [setUser]);
+
+  const register = useCallback(async (email, password, name) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, name })
+      });
+      
+      if (!response.ok) throw new Error('Registration failed');
+      
+      const data = await response.json();
+      setUser(data.user);
+      localStorage.setItem('token', data.token);
+    } catch (err) {
+      setError(err.message);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [setUser]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token && !user) {
+      fetch('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(r => r.json())
+        .then(data => setUser(data.user))
+        .catch(() => logout())
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  return { user, loading, error, login, logout, register };
+}
+```
+
+### Step 2: Task Management
+
+```jsx
+// hooks/useTasks.js
+import { useReducer, useCallback, useEffect } from 'react';
+import { useWebSocket } from './useWebSocket';
+
+const initialState = {
+  tasks: [],
   filter: 'all',
-  history: [],
-  historyIndex: -1
+  sort: 'created',
+  loading: false,
+  error: null
 };
 
-export function todoReducer(state, action) {
+function taskReducer(state, action) {
   switch (action.type) {
-    case 'ADD_TODO':
+    case 'SET_TASKS':
+      return { ...state, tasks: action.payload, loading: false };
+    
+    case 'ADD_TASK':
       return {
         ...state,
-        todos: [
-          ...state.todos,
-          {
-            id: Date.now(),
-            text: action.payload,
-            completed: false,
-            createdAt: new Date().toISOString()
-          }
-        ]
+        tasks: [action.payload, ...state.tasks]
       };
-
-    case 'TOGGLE_TODO':
+    
+    case 'UPDATE_TASK':
       return {
         ...state,
-        todos: state.todos.map(todo =>
-          todo.id === action.payload
-            ? { ...todo, completed: !todo.completed }
-            : todo
+        tasks: state.tasks.map(task =>
+          task.id === action.payload.id ? action.payload : task
         )
       };
-
-    case 'DELETE_TODO':
+    
+    case 'DELETE_TASK':
       return {
         ...state,
-        todos: state.todos.filter(todo => todo.id !== action.payload)
+        tasks: state.tasks.filter(task => task.id !== action.payload)
       };
-
-    case 'EDIT_TODO':
-      return {
-        ...state,
-        todos: state.todos.map(todo =>
-          todo.id === action.payload.id
-            ? { ...todo, text: action.payload.text }
-            : todo
-        )
-      };
-
-    case 'REORDER_TODOS':
-      return {
-        ...state,
-        todos: action.payload
-      };
-
+    
     case 'SET_FILTER':
-      return {
-        ...state,
-        filter: action.payload
-      };
-
-    case 'CLEAR_COMPLETED':
-      return {
-        ...state,
-        todos: state.todos.filter(todo => !todo.completed)
-      };
-
-    case 'RESTORE_STATE':
-      return action.payload;
-
+      return { ...state, filter: action.payload };
+    
+    case 'SET_SORT':
+      return { ...state, sort: action.payload };
+    
+    case 'SET_LOADING':
+      return { ...state, loading: action.payload };
+    
+    case 'SET_ERROR':
+      return { ...state, error: action.payload, loading: false };
+    
     default:
       return state;
   }
 }
-```
 
-### 2. Custom Hooks
+export function useTasks() {
+  const [state, dispatch] = useReducer(taskReducer, initialState);
+  const { sendMessage } = useWebSocket('/ws/tasks');
 
-```jsx
-// src/hooks/useLocalStorage.js
-import { useState, useEffect } from 'react';
-
-export function useLocalStorage(key, initialValue) {
-  const [value, setValue] = useState(() => {
+  const fetchTasks = useCallback(async () => {
+    dispatch({ type: 'SET_LOADING', payload: true });
+    
     try {
-      const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : initialValue;
+      const response = await fetch('/api/tasks');
+      const data = await response.json();
+      dispatch({ type: 'SET_TASKS', payload: data });
     } catch (error) {
-      console.error(error);
-      return initialValue;
+      dispatch({ type: 'SET_ERROR', payload: error.message });
     }
-  });
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-      console.error(error);
-    }
-  }, [key, value]);
-
-  return [value, setValue];
-}
-
-// src/hooks/useKeyPress.js
-import { useEffect } from 'react';
-
-export function useKeyPress(targetKey, callback) {
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === targetKey) {
-        callback(e);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [targetKey, callback]);
-}
-
-// src/hooks/useUndo.js
-import { useReducer, useCallback } from 'react';
-
-export function useUndo(reducer, initialState) {
-  const [state, dispatch] = useReducer(reducer, {
-    past: [],
-    present: initialState,
-    future: []
-  });
-
-  const canUndo = state.past.length > 0;
-  const canRedo = state.future.length > 0;
-
-  const undo = useCallback(() => {
-    dispatch({ type: 'UNDO' });
   }, []);
 
-  const redo = useCallback(() => {
-    dispatch({ type: 'REDO' });
-  }, []);
+  const addTask = useCallback(async (task) => {
+    const optimisticTask = { ...task, id: Date.now(), createdAt: new Date() };
+    dispatch({ type: 'ADD_TASK', payload: optimisticTask });
+    
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(task)
+      });
+      
+      const newTask = await response.json();
+      dispatch({ type: 'UPDATE_TASK', payload: newTask });
+      sendMessage({ type: 'TASK_ADDED', payload: newTask });
+    } catch (error) {
+      dispatch({ type: 'DELETE_TASK', payload: optimisticTask.id });
+      dispatch({ type: 'SET_ERROR', payload: error.message });
+    }
+  }, [sendMessage]);
+
+  const updateTask = useCallback(async (id, updates) => {
+    const originalTask = state.tasks.find(t => t.id === id);
+    dispatch({ type: 'UPDATE_TASK', payload: { ...originalTask, ...updates } });
+    
+    try {
+      const response = await fetch(`/api/tasks/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      
+      const updated = await response.json();
+      dispatch({ type: 'UPDATE_TASK', payload: updated });
+      sendMessage({ type: 'TASK_UPDATED', payload: updated });
+    } catch (error) {
+      dispatch({ type: 'UPDATE_TASK', payload: originalTask });
+      dispatch({ type: 'SET_ERROR', payload: error.message });
+    }
+  }, [state.tasks, sendMessage]);
+
+  const deleteTask = useCallback(async (id) => {
+    const task = state.tasks.find(t => t.id === id);
+    dispatch({ type: 'DELETE_TASK', payload: id });
+    
+    try {
+      await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      sendMessage({ type: 'TASK_DELETED', payload: id });
+    } catch (error) {
+      dispatch({ type: 'ADD_TASK', payload: task });
+      dispatch({ type: 'SET_ERROR', payload: error.message });
+    }
+  }, [state.tasks, sendMessage]);
+
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   return {
-    state: state.present,
-    dispatch,
-    canUndo,
-    canRedo,
-    undo,
-    redo
+    ...state,
+    addTask,
+    updateTask,
+    deleteTask,
+    setFilter: (filter) => dispatch({ type: 'SET_FILTER', payload: filter }),
+    setSort: (sort) => dispatch({ type: 'SET_SORT', payload: sort })
   };
 }
 ```
 
-### 3. Theme Context
+### Step 3: Main Application
 
 ```jsx
-// src/context/ThemeContext.jsx
-import { createContext, useContext, useState, useEffect } from 'react';
+// App.jsx
+import { Suspense, lazy } from 'react';
+import { useAuth } from './hooks/useAuth';
+import { useTheme } from './hooks/useTheme';
+import { TaskProvider } from './contexts/TaskContext';
+import { Header } from './components/Layout/Header';
+import { Loading } from './components/Loading';
 
-const ThemeContext = createContext();
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Login = lazy(() => import('./pages/Login'));
 
-export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    return saved || 'light';
-  });
-
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
-
-  return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
-      {children}
-    </ThemeContext.Provider>
-  );
-}
-
-export function useTheme() {
-  const context = useContext(ThemeContext);
-  if (!context) {
-    throw new Error('useTheme must be used within ThemeProvider');
-  }
-  return context;
-}
-```
-
-### 4. Main Components
-
-```jsx
-// src/components/TodoItem.jsx
-import { useState, memo, useCallback } from 'react';
-
-const TodoItem = memo(function TodoItem({ todo, onToggle, onDelete, onEdit }) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editText, setEditText] = useState(todo.text);
-
-  const handleEdit = useCallback(() => {
-    if (editText.trim()) {
-      onEdit(todo.id, editText);
-      setIsEditing(false);
-    }
-  }, [todo.id, editText, onEdit]);
-
-  return (
-    <li className={`todo-item ${todo.completed ? 'completed' : ''}`}>
-      <input
-        type="checkbox"
-        checked={todo.completed}
-        onChange={() => onToggle(todo.id)}
-      />
-      
-      {isEditing ? (
-        <input
-          value={editText}
-          onChange={e => setEditText(e.target.value)}
-          onBlur={handleEdit}
-          onKeyPress={e => e.key === 'Enter' && handleEdit()}
-          autoFocus
-        />
-      ) : (
-        <span onDoubleClick={() => setIsEditing(true)}>
-          {todo.text}
-        </span>
-      )}
-      
-      <button onClick={() => onDelete(todo.id)}>Delete</button>
-    </li>
-  );
-});
-
-export default TodoItem;
-
-// src/App.jsx
-import { useReducer, useMemo, useCallback } from 'react';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
-import { todoReducer, initialState } from './reducers/todoReducer';
-import { useLocalStorage } from './hooks/useLocalStorage';
-import { useKeyPress } from './hooks/useKeyPress';
-import TodoInput from './components/TodoInput';
-import TodoList from './components/TodoList';
-import FilterButtons from './components/FilterButtons';
-import ThemeToggle from './components/ThemeToggle';
-import './App.css';
-
-function TodoApp() {
-  const [savedState, setSavedState] = useLocalStorage('todos', initialState);
-  const [state, dispatch] = useReducer(todoReducer, savedState);
+function App() {
+  const { user, loading } = useAuth();
   const { theme } = useTheme();
 
-  // Auto-save
-  useEffect(() => {
-    setSavedState(state);
-  }, [state, setSavedState]);
-
-  // Filtered todos
-  const filteredTodos = useMemo(() => {
-    switch (state.filter) {
-      case 'active':
-        return state.todos.filter(t => !t.completed);
-      case 'completed':
-        return state.todos.filter(t => t.completed);
-      default:
-        return state.todos;
-    }
-  }, [state.todos, state.filter]);
-
-  // Callbacks
-  const addTodo = useCallback((text) => {
-    dispatch({ type: 'ADD_TODO', payload: text });
-  }, []);
-
-  const toggleTodo = useCallback((id) => {
-    dispatch({ type: 'TOGGLE_TODO', payload: id });
-  }, []);
-
-  const deleteTodo = useCallback((id) => {
-    dispatch({ type: 'DELETE_TODO', payload: id });
-  }, []);
-
-  const editTodo = useCallback((id, text) => {
-    dispatch({ type: 'EDIT_TODO', payload: { id, text } });
-  }, []);
-
-  // Keyboard shortcuts
-  useKeyPress('Escape', () => {
-    // Clear filter on ESC
-    dispatch({ type: 'SET_FILTER', payload: 'all' });
-  });
+  if (loading) {
+    return <Loading />;
+  }
 
   return (
     <div className={`app theme-${theme}`}>
-      <header>
-        <h1>Advanced Todo App</h1>
-        <ThemeToggle />
-      </header>
-
-      <main>
-        <TodoInput onAdd={addTodo} />
-        
-        <FilterButtons
-          currentFilter={state.filter}
-          setFilter={filter => dispatch({ type: 'SET_FILTER', payload: filter })}
-        />
-
-        <TodoList
-          todos={filteredTodos}
-          onToggle={toggleTodo}
-          onDelete={deleteTodo}
-          onEdit={editTodo}
-        />
-
-        <footer>
-          <span>{state.todos.filter(t => !t.completed).length} items left</span>
-          <button onClick={() => dispatch({ type: 'CLEAR_COMPLETED' })}>
-            Clear completed
-          </button>
-        </footer>
-      </main>
+      <Header />
+      
+      <Suspense fallback={<Loading />}>
+        {user ? (
+          <TaskProvider>
+            <Dashboard />
+          </TaskProvider>
+        ) : (
+          <Login />
+        )}
+      </Suspense>
     </div>
-  );
-}
-
-function App() {
-  return (
-    <ThemeProvider>
-      <TodoApp />
-    </ThemeProvider>
   );
 }
 
@@ -396,106 +315,84 @@ export default App;
 
 ---
 
-## 🎨 Styling
+## 🎯 Requirements Checklist
 
-```css
-/* src/App.css */
-:root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --border-color: #e0e0e0;
-  --accent-color: #4CAF50;
-}
+### Core Functionality
+- [ ] User registration and login
+- [ ] Create, read, update, delete tasks
+- [ ] Filter tasks (all, active, completed)
+- [ ] Sort tasks (date, priority, title)
+- [ ] Search tasks
+- [ ] Mark tasks as complete
 
-[data-theme='dark'] {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #2d2d2d;
-  --text-primary: #e0e0e0;
-  --text-secondary: #b0b0b0;
-  --border-color: #404040;
-  --accent-color: #66BB6A;
-}
+### Advanced Features
+- [ ] Drag and drop to reorder
+- [ ] Real-time collaboration (WebSocket)
+- [ ] Offline support (Service Worker)
+- [ ] Dark/light theme toggle
+- [ ] Keyboard shortcuts
+- [ ] Export/import tasks
 
-.app {
-  max-width: 600px;
-  margin: 0 auto;
-  padding: 20px;
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  min-height: 100vh;
-}
+### Performance
+- [ ] Code splitting for routes
+- [ ] Lazy loading components
+- [ ] Memoization (React.memo, useMemo, useCallback)
+- [ ] Virtual scrolling for large lists
+- [ ] Debounced search
+- [ ] Optimistic updates
 
-.todo-item {
-  display: flex;
-  align-items: center;
-  padding: 12px;
-  border-bottom: 1px solid var(--border-color);
-  transition: all 0.3s;
-}
-
-.todo-item.completed span {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-.todo-item:hover {
-  background: var(--bg-secondary);
-}
-```
+### Testing
+- [ ] Unit tests for hooks
+- [ ] Component tests
+- [ ] Integration tests
+- [ ] E2E tests
 
 ---
 
-## 🏋️ Challenges
+## 🏆 Bonus Challenges
 
-### Level 1: Basic
-- [ ] Add todo counter
-- [ ] Implement "Select All" checkbox
-- [ ] Add created date display
-
-### Level 2: Intermediate
-- [ ] Add drag-and-drop reordering
-- [ ] Implement categories/tags
-- [ ] Add search functionality
-
-### Level 3: Advanced
-- [ ] Sync across browser tabs
-- [ ] Add animations with transitions
-- [ ] Implement undo/redo
-- [ ] Add keyboard shortcuts overlay
-- [ ] Export/import todos (JSON)
+1. **AI Task Suggestions**: Use AI to suggest task priorities
+2. **Voice Input**: Add speech-to-text for creating tasks
+3. **Analytics Dashboard**: Show productivity statistics
+4. **Mobile App**: React Native version
+5. **Browser Extension**: Quick task creation from any page
 
 ---
 
-## 📊 Hooks Used
+## 📊 Evaluation Criteria
 
-✅ useState - Component state  
-✅ useEffect - Side effects  
-✅ useContext - Theme management  
-✅ useReducer - Complex state logic  
-✅ useMemo - Filtered todos  
-✅ useCallback - Memoized callbacks  
-✅ useRef - Focus management  
-✅ useLayoutEffect - DOM measurements  
-✅ useId - Accessibility  
-✅ useTransition - Smooth filtering  
-✅ Custom hooks - Reusable logic  
+| Criteria | Points |
+|----------|--------|
+| Code quality and organization | 20 |
+| Hook usage and custom hooks | 25 |
+| Performance optimization | 20 |
+| UI/UX design | 15 |
+| Testing coverage | 10 |
+| Documentation | 10 |
+| **Total** | **100** |
 
 ---
 
 ## 🎓 Congratulations!
 
-You've completed the React Hooks Deep Dive course! 🎉
+You've completed the React Hooks Deep Dive course! You now have mastery over:
 
-You now have mastery of:
-- All 16 React hooks
-- Custom hook patterns
-- Performance optimization
-- Real-world applications
+- ✅ All built-in React hooks
+- ✅ Custom hook patterns
+- ✅ Performance optimization
+- ✅ State management
+- ✅ Real-world application development
 
-**Next Steps:**
-- Build your own projects
-- Contribute to open source
-- Share your knowledge
-- Continue learning!
+### Next Steps
+
+1. Build the final project
+2. Share your project on GitHub
+3. Continue with [Performance Optimization →](../../react-performance-optimization/README.md)
+4. Explore [Testing Masterclass →](../../react-testing-masterclass/README.md)
+5. Master [Design Patterns →](../../react-design-patterns/README.md)
+
+---
+
+## 📜 Certificate
+
+Complete the final project to earn your **React Hooks Expert** certificate!
