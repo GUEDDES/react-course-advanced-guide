@@ -1,0 +1,76 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+        example: [movie-app, state-management-demo]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        cd examples/${{ matrix.example }}
+        npm ci
+    
+    - name: Run linter
+      run: |
+        cd examples/${{ matrix.example }}
+        npm run lint
+    
+    - name: Run tests
+      run: |
+        cd examples/${{ matrix.example }}
+        npm test -- --coverage
+    
+    - name: Upload coverage
+      uses: codecov/codecov-action@v3
+      with:
+        files: examples/${{ matrix.example }}/coverage/coverage-final.json
+        flags: ${{ matrix.example }}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+    
+    - name: Build examples
+      run: |
+        for dir in examples/*/; do
+          if [ -f "$dir/package.json" ]; then
+            echo "Building $(basename $dir)"
+            cd "$dir"
+            npm ci
+            npm run build
+            cd ../..
+          fi
+        done
+    
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: dist-files
+        path: examples/*/dist
