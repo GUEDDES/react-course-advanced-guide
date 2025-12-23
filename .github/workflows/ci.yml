@@ -39,28 +39,31 @@ jobs:
     
     steps:
       - uses: actions/checkout@v3
+        with:
+          clean: true
+          fetch-depth: 0
       
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: examples/state-management-demo/package-lock.json
       
-      - name: Check if package.json exists
-        id: check-package
+      - name: Verify tsconfig files
+        working-directory: examples/state-management-demo
         run: |
-          if [ -f examples/state-management-demo/package.json ]; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
+          echo "✅ Checking TypeScript config files..."
+          ls -la
+          test -f tsconfig.json && echo "tsconfig.json found" || exit 1
+          test -f tsconfig.node.json && echo "tsconfig.node.json found" || exit 1
+          test -f vite.config.ts && echo "vite.config.ts found" || exit 1
       
       - name: Install dependencies
-        if: steps.check-package.outputs.exists == 'true'
         working-directory: examples/state-management-demo
-        run: npm install
+        run: npm ci
       
       - name: Build
-        if: steps.check-package.outputs.exists == 'true'
         working-directory: examples/state-management-demo
         run: npm run build
 
